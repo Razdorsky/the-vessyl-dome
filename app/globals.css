@@ -206,9 +206,16 @@ img {
 .site-header::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: 0 0 auto;
+  height: clamp(9rem, 18vh, 13rem);
   z-index: -1;
-  background: linear-gradient(180deg, rgba(7, 9, 8, 0.88), rgba(7, 9, 8, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(7, 9, 8, 0.9) 0%,
+    rgba(7, 9, 8, 0.66) 38%,
+    rgba(7, 9, 8, 0.28) 72%,
+    rgba(7, 9, 8, 0) 100%
+  );
   pointer-events: none;
 }
 

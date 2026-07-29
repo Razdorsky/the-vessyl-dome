@@ -74,6 +74,10 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /:root\[data-typography="updated"\]/);
   assert.match(styles, /--type-brand-width: clamp\(209px, 18\.15vw, 277px\)/);
   assert.match(styles, /--type-brand-width: 213px/);
+  assert.match(
+    styles,
+    /\.site-header::before \{[\s\S]*height: clamp\(9rem, 18vh, 13rem\)[\s\S]*rgba\(7, 9, 8, 0\.66\) 38%/,
+  );
   assert.match(styles, /--type-mobile-nav: clamp\(33px, 10\.8vw, 60px\)/);
   assert.match(styles, /--type-h1: clamp\(55px, 7\.14vw, 128px\)/);
   assert.match(styles, /--type-h2: clamp\(48px, 5\.47vw, 103px\)/);
