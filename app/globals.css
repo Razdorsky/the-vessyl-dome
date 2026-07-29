@@ -1655,6 +1655,9 @@ main,
   --type-body-small: 12px;
   --type-card-title: 21px;
   --type-stage-title: 23px;
+  --copy-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.6),
+    0 4px 18px rgba(0, 0, 0, 0.6);
 }
 
 :root[data-typography="updated"] .brand {
@@ -1702,11 +1705,15 @@ main,
 
 :root[data-typography="updated"] .hero h1 {
   font-size: var(--type-h1);
-  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.33);
 }
 
 :root[data-typography="updated"] .chapter h2 {
   font-size: var(--type-h2);
+}
+
+:root[data-typography="updated"] .hero h1,
+:root[data-typography="updated"] .chapter h2 {
+  text-shadow: var(--copy-shadow);
 }
 
 :root[data-typography="updated"] .journey-heading h2 {
@@ -1723,9 +1730,7 @@ main,
   :root[data-typography="updated"] .book-copy > p:not(.section-index) {
   font-size: var(--type-lead);
   color: rgba(245, 235, 231, 0.88);
-  text-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.6),
-    0 4px 18px rgba(0, 0, 0, 0.6);
+  text-shadow: var(--copy-shadow);
 }
 
 :root[data-typography="updated"] .button,

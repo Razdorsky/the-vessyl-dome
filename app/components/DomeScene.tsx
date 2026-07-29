@@ -37,8 +37,8 @@ const ENVIRONMENT_HEIGHT = 15.5;
 const ENVIRONMENT_PHOTO_FOV = 68;
 const FRAME_INTERVAL_MS = 1000 / 60;
 const ANTIALIASING = {
-  fxaa: false,
-  msaa: true,
+  fxaa: true,
+  msaa: false,
   msaaSamples: 4,
 } as const;
 const RESONANCE_RING_INNER_OFFSET = 0.065;

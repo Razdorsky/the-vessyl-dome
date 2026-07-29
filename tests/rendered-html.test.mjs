@@ -94,7 +94,15 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /--type-mobile-cta: 14px/);
   assert.match(styles, /--type-lead: 20px/);
   assert.match(styles, /--type-lead: 18px/);
-  assert.match(styles, /text-shadow: 0 3px 18px rgba\(0, 0, 0, 0\.33\)/);
+  assert.match(
+    styles,
+    /--copy-shadow:\s*0 2px 6px rgba\(0, 0, 0, 0\.6\),\s*0 4px 18px rgba\(0, 0, 0, 0\.6\)/,
+  );
+  assert.match(
+    styles,
+    /\.hero h1,\s*:root\[data-typography="updated"\] \.chapter h2 \{\s*text-shadow: var\(--copy-shadow\)/,
+  );
+  assert.match(styles, /text-shadow: var\(--copy-shadow\)/);
   assert.match(styles, /color: rgba\(245, 235, 231, 0\.88\)/);
   assert.match(styles, /0 2px 6px rgba\(0, 0, 0, 0\.6\)/);
   assert.match(styles, /0 4px 18px rgba\(0, 0, 0, 0\.6\)/);
@@ -120,7 +128,7 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /webgl-cylindrical-skybox/);
   assert.match(scene, /const FRAME_INTERVAL_MS = 1000 \/ 60/);
   assert.doesNotMatch(scene, /1000 \/ (?:24|30)/);
-  assert.match(scene, /fxaa: false,\s*msaa: true,\s*msaaSamples: 4/);
+  assert.match(scene, /fxaa: true,\s*msaa: false,\s*msaaSamples: 4/);
   assert.match(scene, /antialias: ANTIALIASING\.msaa/);
   assert.match(
     scene,
