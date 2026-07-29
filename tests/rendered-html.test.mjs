@@ -54,8 +54,7 @@ test("starter preview is fully removed", async () => {
 
   assert.match(page, /VessylExperience/);
   assert.match(layout, /The Vessyl/);
-  assert.match(layout, /export async function generateMetadata/);
-  assert.match(layout, /x-forwarded-host/);
+  assert.match(layout, /process\.env\.NEXT_PUBLIC_SITE_URL/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
 });
