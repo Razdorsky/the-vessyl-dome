@@ -1091,7 +1091,7 @@ main,
   filter: saturate(0.84) contrast(1.04) brightness(0.8);
   transform: scale(1.2);
   transition:
-    transform 3.5s cubic-bezier(0.18, 0.7, 0.18, 1),
+    transform 4s cubic-bezier(0.18, 0.7, 0.18, 1),
     filter 0.8s ease;
 }
 
@@ -1673,12 +1673,17 @@ main,
   --type-lead: 20px;
   --type-cta: 12px;
   --type-micro: 10px;
-  --type-body-small: 12px;
-  --type-card-title: 21px;
-  --type-stage-title: 23px;
+  --type-body-small: 14px;
+  --type-card-label: 12px;
+  --type-card-title: 24px;
+  --type-stage-number: 12px;
+  --type-stage-title: 24px;
   --copy-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.6),
-    0 4px 18px rgba(0, 0, 0, 0.6);
+    0 2px 6px rgba(0, 0, 0, 0.48),
+    0 4px 18px rgba(0, 0, 0, 0.48);
+  --card-copy-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.24),
+    0 2px 9px rgba(0, 0, 0, 0.24);
 }
 
 :root[data-typography="updated"] .brand {
@@ -1762,8 +1767,6 @@ main,
 :root[data-typography="updated"] .hero-notation > div,
 :root[data-typography="updated"] .hero-notation small,
 :root[data-typography="updated"] .scroll-cue,
-:root[data-typography="updated"] .signal-grid article > span,
-:root[data-typography="updated"] .journey-path article > span,
 :root[data-typography="updated"] .detail-note span,
 :root[data-typography="updated"] .photo-portal figcaption,
 :root[data-typography="updated"] .booking-meta a,
@@ -1778,6 +1781,10 @@ main,
   font-size: var(--type-kicker);
 }
 
+:root[data-typography="updated"] .signal-grid article > span {
+  font-size: var(--type-card-label);
+}
+
 :root[data-typography="updated"] .signal-grid h3 {
   font-size: var(--type-card-title);
 }
@@ -1785,6 +1792,17 @@ main,
 :root[data-typography="updated"] .signal-grid p,
 :root[data-typography="updated"] .journey-path p {
   font-size: var(--type-body-small);
+}
+
+:root[data-typography="updated"] .signal-grid h3,
+:root[data-typography="updated"] .signal-grid p,
+:root[data-typography="updated"] .journey-path h3,
+:root[data-typography="updated"] .journey-path p {
+  text-shadow: var(--card-copy-shadow);
+}
+
+:root[data-typography="updated"] .journey-path article > span {
+  font-size: var(--type-stage-number);
 }
 
 :root[data-typography="updated"] .journey-path h3 {
@@ -1816,6 +1834,7 @@ main,
     --type-h2: clamp(40px, 10.94vw, 57px);
     --type-h2-experience: var(--type-h2);
     --type-h2-book: clamp(44px, 11.54vw, 62px);
-    --type-stage-title: 19px;
+    --type-card-title: 22px;
+    --type-stage-title: 22px;
   }
 }

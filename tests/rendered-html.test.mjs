@@ -94,9 +94,20 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /--type-mobile-cta: 14px/);
   assert.match(styles, /--type-lead: 20px/);
   assert.match(styles, /--type-lead: 18px/);
+  assert.match(styles, /--type-body-small: 14px/);
+  assert.match(styles, /--type-card-label: 12px/);
+  assert.match(styles, /--type-card-title: 24px/);
+  assert.match(styles, /--type-stage-number: 12px/);
+  assert.match(styles, /--type-stage-title: 24px/);
+  assert.match(styles, /--type-card-title: 22px/);
+  assert.match(styles, /--type-stage-title: 22px/);
   assert.match(
     styles,
-    /--copy-shadow:\s*0 2px 6px rgba\(0, 0, 0, 0\.6\),\s*0 4px 18px rgba\(0, 0, 0, 0\.6\)/,
+    /--copy-shadow:\s*0 2px 6px rgba\(0, 0, 0, 0\.48\),\s*0 4px 18px rgba\(0, 0, 0, 0\.48\)/,
+  );
+  assert.match(
+    styles,
+    /--card-copy-shadow:\s*0 1px 3px rgba\(0, 0, 0, 0\.24\),\s*0 2px 9px rgba\(0, 0, 0, 0\.24\)/,
   );
   assert.match(
     styles,
@@ -104,8 +115,12 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(styles, /text-shadow: var\(--copy-shadow\)/);
   assert.match(styles, /color: rgba\(245, 235, 231, 0\.88\)/);
-  assert.match(styles, /0 2px 6px rgba\(0, 0, 0, 0\.6\)/);
-  assert.match(styles, /0 4px 18px rgba\(0, 0, 0, 0\.6\)/);
+  assert.match(styles, /0 2px 6px rgba\(0, 0, 0, 0\.48\)/);
+  assert.match(styles, /0 4px 18px rgba\(0, 0, 0, 0\.48\)/);
+  assert.match(
+    styles,
+    /\.signal-grid h3,[\s\S]*\.signal-grid p,[\s\S]*\.journey-path h3,[\s\S]*\.journey-path p \{\s*text-shadow: var\(--card-copy-shadow\)/,
+  );
   assert.match(
     styles,
     /\.portal-stay figcaption \{\s*top: 1\.45rem;\s*bottom: auto;/,
@@ -116,7 +131,7 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(
     styles,
-    /\.photo-portal img \{[\s\S]*transform: scale\(1\.2\);[\s\S]*transform 3\.5s/,
+    /\.photo-portal img \{[\s\S]*transform: scale\(1\.2\);[\s\S]*transform 4s/,
   );
   assert.match(
     styles,
