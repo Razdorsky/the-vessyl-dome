@@ -97,15 +97,20 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /--type-mobile-nav: clamp\(33px, 10\.8vw, 60px\)/);
   assert.match(styles, /--type-h1: clamp\(55px, 7\.14vw, 128px\)/);
   assert.match(styles, /--type-h2: clamp\(48px, 5\.47vw, 103px\)/);
-  assert.match(styles, /--type-h2-experience: clamp\(47px, 4\.96vw, 91px\)/);
-  assert.match(styles, /--type-h2-book: clamp\(55px, 6\.16vw, 116px\)/);
+  assert.match(
+    styles,
+    /--type-h2-experience: clamp\(46px, calc\(4\.96vw - 1px\), 90px\)/,
+  );
+  assert.match(
+    styles,
+    /--type-h2-book: clamp\(54px, calc\(6\.16vw - 1px\), 115px\)/,
+  );
   assert.match(styles, /--type-h2: clamp\(46px, 5\.73vw, 87px\)/);
-  assert.match(styles, /--type-h1: calc\(clamp\(52px, 13\.68vw, 85px\) - 1px\)/);
-  assert.match(styles, /--type-h2: calc\(clamp\(44px, 11\.12vw, 75px\) - 1px\)/);
-  assert.match(styles, /--type-h2-book: calc\(clamp\(48px, 12\.4vw, 82px\) - 1px\)/);
-  assert.match(styles, /--type-h1: calc\(clamp\(46px, 13vw, 65px\) - 1px\)/);
-  assert.match(styles, /--type-h2: calc\(clamp\(40px, 10\.94vw, 57px\) - 1px\)/);
-  assert.match(styles, /--type-h2-book: calc\(clamp\(44px, 11\.54vw, 62px\) - 1px\)/);
+  assert.match(styles, /--type-h1: clamp\(68px, calc\(43\.6054px \+ 4\.6823vw\), 82px\)/);
+  assert.match(styles, /--type-h2: clamp\(58px, calc\(33\.6054px \+ 4\.6823vw\), 72px\)/);
+  assert.match(styles, /--type-h1: clamp\(44px, calc\(18\.4px \+ 8vw\), 60px\)/);
+  assert.match(styles, /--type-h2: clamp\(38px, calc\(12\.4px \+ 8vw\), 54px\)/);
+  assert.match(styles, /--type-h2-book: calc\(var\(--type-h2\) - 1px\)/);
   assert.match(styles, /--type-nav: 12px/);
   assert.match(styles, /--type-mobile-cta: 14px/);
   assert.match(styles, /--type-lead: 20px/);
@@ -175,11 +180,32 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(
     styles,
-    /@media \(max-width: 820px\) \{[\s\S]*?--type-h1: calc\(clamp\(52px, 13\.68vw, 85px\) - 1px\);[\s\S]*?--type-h2: calc\(clamp\(44px, 11\.12vw, 75px\) - 1px\);[\s\S]*?--type-h2-book: calc\(clamp\(48px, 12\.4vw, 82px\) - 1px\);/,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.hero h1 \{[\s\S]*?width: calc\(100vw - 1\.25rem\);[\s\S]*?max-width: none;/,
   );
   assert.match(
     styles,
-    /@media \(max-width: 520px\) \{[\s\S]*?--type-h1: calc\(clamp\(46px, 13vw, 65px\) - 1px\);[\s\S]*?--type-h2: calc\(clamp\(40px, 10\.94vw, 57px\) - 1px\);[\s\S]*?--type-h2-book: calc\(clamp\(44px, 11\.54vw, 62px\) - 1px\);/,
+    /@media \(min-width: 1101px\) \{[\s\S]*?\.chapter-stay \.media-layout-reverse \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) clamp\(28\.5rem, 42vw, 42rem\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(min-width: 821px\) \{[\s\S]*?\.chapter-place \.media-layout \{[\s\S]*?grid-template-columns: clamp\(18rem, 35vw, 42rem\) minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    styles,
+    /\.hero h1,\s*\.chapter h2 \{\s*white-space: nowrap;/,
+  );
+  assert.match(styles, /\.book-copy \{\s*width: min\(calc\(100vw - 1rem\), 75rem\);/);
+  assert.match(
+    styles,
+    /--type-h2-book: min\(calc\(var\(--type-h2\) - 1px\), calc\(10vw - 3px\)\)/,
+  );
+  assert.match(
+    styles,
+    /--type-h2-experience: min\(calc\(var\(--type-h2\) - 1px\), calc\(11\.15vw - 3px\)\)/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.journey-heading h2 \{[\s\S]*?width: calc\(100vw - 1rem\);[\s\S]*?margin-left: calc\(50% - 50vw \+ 0\.5rem\);/,
   );
   assert.match(
     styles,
