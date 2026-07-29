@@ -6,6 +6,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { FXAAPass } from "three/addons/postprocessing/FXAAPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { createDomeCladdingGeometry } from "./domeCladding";
 
 type SceneKeyframe = {
   at: number;
@@ -29,8 +30,6 @@ type SceneSample = Pick<
 const COPPER = new THREE.Color("#d57e3d");
 const COPPER_LIGHT = new THREE.Color("#f5c6a3");
 const COPPER_DARK = new THREE.Color("#2a1309");
-const SHINGLE_GRAPHITE = new THREE.Color("#30363a");
-const SHINGLE_PATINA = new THREE.Color("#76513f");
 
 const DOME_RADIUS = 2.48;
 const DOME_DRUM_HEIGHT = DOME_RADIUS * 0.62;
@@ -56,6 +55,7 @@ const VIEWPORT_RENDER_SCALE = {
 const RESONANCE_RING_INNER_OFFSET = 0.065;
 const RESONANCE_RING_THICKNESS = 0.18;
 const RESONANCE_RING_SPEED = 0.18;
+const WIRE_VISIBILITY_EPSILON = 0.001;
 const PARTICLE_COUNT = 840;
 const LOW_POWER_PARTICLE_COUNT = 320;
 
@@ -195,98 +195,16 @@ function createParticleTexture() {
   return texture;
 }
 
-function createShingleGeometry(width: number, height: number) {
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
-  const chamfer = Math.min(width, height) * 0.055;
-  const shape = new THREE.Shape();
-
-  shape.moveTo(-halfWidth + chamfer, -halfHeight);
-  shape.lineTo(halfWidth - chamfer, -halfHeight);
-  shape.lineTo(halfWidth, -halfHeight + chamfer);
-  shape.lineTo(halfWidth, halfHeight - chamfer);
-  shape.lineTo(halfWidth - chamfer, halfHeight);
-  shape.lineTo(-halfWidth + chamfer, halfHeight);
-  shape.lineTo(-halfWidth, halfHeight - chamfer);
-  shape.lineTo(-halfWidth, -halfHeight + chamfer);
-  shape.closePath();
-
-  const thickness = 0.012;
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: thickness,
-    steps: 1,
-    bevelEnabled: true,
-    bevelSegments: 1,
-    bevelSize: 0.006,
-    bevelThickness: 0.004,
-    curveSegments: 1,
-  });
-  geometry.translate(0, 0, -thickness / 2);
-
-  const positions = geometry.getAttribute("position");
-  for (let index = 0; index < positions.count; index += 1) {
-    const downslope = THREE.MathUtils.clamp(
-      (positions.getY(index) + halfHeight) / height,
-      0,
-      1,
-    );
-    const lipLift = THREE.MathUtils.lerp(-0.002, 0.018, downslope);
-    positions.setZ(index, positions.getZ(index) + lipLift);
-  }
-  positions.needsUpdate = true;
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  return geometry;
-}
-
 function createDomeTiles(radius: number, compact: boolean) {
-  const tileWidth = compact ? 0.24 : 0.17;
-  const tileHeight = compact ? 0.26 : 0.19;
-  const coursePitch = compact ? 0.215 : 0.155;
-  const lateralSeam = compact ? 0.01 : 0.006;
-  const projectedTileSpan = (tileWidth + tileHeight) * Math.SQRT1_2;
-  const capArc = radius * (Math.PI / 2);
-  const surfaceLength = capArc + DOME_DRUM_HEIGHT;
-  const courseStart = compact ? 0.14 : 0.105;
-  const placements: Array<{
-    row: number;
-    phi: number;
-    surfaceDistance: number;
-    courseRadius: number;
-    count: number;
-  }> = [];
-
-  for (
-    let row = 0, surfaceDistance = courseStart;
-    surfaceDistance <= surfaceLength - coursePitch * 0.12;
-    row += 1, surfaceDistance = courseStart + row * coursePitch
-  ) {
-    const theta = Math.min(Math.PI / 2, surfaceDistance / radius);
-    const courseRadius =
-      surfaceDistance <= capArc ? Math.sin(theta) * radius : radius;
-    const circumference = Math.PI * 2 * courseRadius;
-    const approximateCount = Math.max(
-      6,
-      Math.round(circumference / (projectedTileSpan + lateralSeam)),
-    );
-    const count = Math.max(6, Math.round(approximateCount / 2) * 2);
-    const offset = row % 2 === 0 ? 0 : Math.PI / count;
-
-    for (let column = 0; column < count; column += 1) {
-      placements.push({
-        row,
-        phi: (column / count) * Math.PI * 2 + offset,
-        surfaceDistance,
-        courseRadius,
-        count,
-      });
-    }
-  }
-
-  const geometry = createShingleGeometry(tileWidth, tileHeight);
+  const { geometry, topology } = createDomeCladdingGeometry({
+    radius,
+    drumHeight: DOME_DRUM_HEIGHT,
+    springY: DOME_SPRING_Y,
+    compact,
+  });
   const material = new THREE.MeshStandardMaterial({
     color: 0xffffff,
+    vertexColors: true,
     metalness: 0.52,
     roughness: 0.64,
     opacity: 1,
@@ -294,90 +212,8 @@ function createDomeTiles(radius: number, compact: boolean) {
     side: THREE.FrontSide,
     depthWrite: false,
   });
-  const mesh = new THREE.InstancedMesh(
-    geometry,
-    material,
-    placements.length,
-  );
-  mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-  mesh.frustumCulled = false;
-
-  const matrix = new THREE.Matrix4();
-  const basis = new THREE.Matrix4();
-  const position = new THREE.Vector3();
-  const normal = new THREE.Vector3();
-  const east = new THREE.Vector3();
-  const down = new THREE.Vector3();
-  const scale = new THREE.Vector3(1, 1, 1);
-  const quaternion = new THREE.Quaternion();
-  const shingleTwist = new THREE.Quaternion().setFromAxisAngle(
-    new THREE.Vector3(0, 0, 1),
-    Math.PI / 4,
-  );
-
-  placements.forEach(
-    ({ row, phi, surfaceDistance, courseRadius, count }, index) => {
-      const onCap = surfaceDistance <= capArc;
-      const theta = Math.min(Math.PI / 2, surfaceDistance / radius);
-
-      east.set(-Math.sin(phi), 0, Math.cos(phi));
-      if (onCap) {
-        normal.set(
-          Math.sin(theta) * Math.cos(phi),
-          Math.cos(theta),
-          Math.sin(theta) * Math.sin(phi),
-        );
-        down.set(
-          Math.cos(theta) * Math.cos(phi),
-          -Math.sin(theta),
-          Math.cos(theta) * Math.sin(phi),
-        );
-        position
-          .copy(normal)
-          .multiplyScalar(radius + 0.017);
-        position.y += DOME_SPRING_Y;
-      } else {
-        const drumDistance = surfaceDistance - capArc;
-        normal.set(Math.cos(phi), 0, Math.sin(phi));
-        down.set(0, -1, 0);
-        position.set(
-          Math.cos(phi) * (radius + 0.017),
-          DOME_SPRING_Y - drumDistance,
-          Math.sin(phi) * (radius + 0.017),
-        );
-      }
-
-      basis.makeBasis(east, down, normal);
-      quaternion.setFromRotationMatrix(basis);
-      quaternion.multiply(shingleTwist);
-      const chord = 2 * courseRadius * Math.sin(Math.PI / count);
-      const widthScale = Math.max(
-        0.42,
-        ((chord - lateralSeam) / Math.SQRT1_2 - tileHeight) /
-          tileWidth,
-      );
-      scale.set(widthScale, 1, 1);
-      matrix.compose(position, quaternion, scale);
-      mesh.setMatrixAt(index, matrix);
-
-      const noise = Math.abs(seededNoise(index * 0.73 + row * 2.1));
-      const height =
-        1 -
-        THREE.MathUtils.clamp(
-          (position.y - DOME_BASE_Y) / (DOME_TOP_Y - DOME_BASE_Y),
-          0,
-          1,
-        );
-      const color = SHINGLE_GRAPHITE.clone()
-        .lerp(SHINGLE_PATINA, 0.28 + noise * 0.27)
-        .lerp(COPPER, height * 0.08 + noise * 0.04)
-        .lerp(COPPER_LIGHT, noise > 0.86 ? 0.045 : 0);
-      mesh.setColorAt(index, color);
-    },
-  );
-
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.claddingTopology = topology;
   return { mesh, geometry, material };
 }
 
@@ -771,11 +607,13 @@ export function DomeScene() {
     const wireMaterial = new THREE.LineBasicMaterial({
       color: 0xf1c6a3,
       transparent: true,
-      opacity: 0.17,
+      opacity: 0,
       blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
     const wire = new THREE.LineSegments(wireGeometry, wireMaterial);
     wire.scale.setScalar(1.012);
+    wire.visible = false;
     domeGroup.add(wire);
 
     const innerGlowMaterial = new THREE.MeshBasicMaterial({
@@ -911,7 +749,7 @@ export function DomeScene() {
         rotation: -0.12,
         tiles: 0.96,
         shell: 0.42,
-        wire: 0.07,
+        wire: 0,
         resonance: 0.46,
         sky: 0.42,
       },
@@ -1101,7 +939,9 @@ export function DomeScene() {
       shellMaterial.emissiveIntensity =
         0.18 + sampled.resonance * 0.16 +
         (prefersReducedMotion ? 0 : Math.sin(elapsed * 1.1) * 0.025);
-      wireMaterial.opacity = sampled.wire;
+      const wireOpacity = THREE.MathUtils.clamp(sampled.wire, 0, 1);
+      wireMaterial.opacity = wireOpacity;
+      wire.visible = wireOpacity > WIRE_VISIBILITY_EPSILON;
       fresnelMaterial.uniforms.uOpacity.value =
         0.16 + sampled.resonance * 0.24;
       innerGlowMaterial.opacity = 0.025 + sampled.resonance * 0.07;

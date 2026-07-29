@@ -160,8 +160,12 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
 });
 
 test("volcano environment is rendered by the Three.js world", async () => {
-  const [scene, experience, styles] = await Promise.all([
+  const [scene, cladding, experience, styles] = await Promise.all([
     readFile(new URL("../app/components/DomeScene.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../app/components/domeCladding.ts", import.meta.url),
+      "utf8",
+    ),
     readFile(
       new URL("../app/components/VessylExperience.tsx", import.meta.url),
       "utf8",
@@ -171,6 +175,17 @@ test("volcano environment is rendered by the Three.js world", async () => {
 
   assert.match(scene, /new THREE\.CylinderGeometry\(/);
   assert.match(scene, /new THREE\.TextureLoader\(\)\.load\(/);
+  assert.match(scene, /createDomeCladdingGeometry\(/);
+  assert.doesNotMatch(scene, /new THREE\.InstancedMesh\(/);
+  assert.doesNotMatch(scene, /new THREE\.ExtrudeGeometry\(/);
+  assert.doesNotMatch(scene, /lateralSeam|lipLift/);
+  assert.match(cladding, /circumferentialPeriod = compact \? 32 : 44/);
+  assert.match(cladding, /coursePeriod = compact \? 40 : 56/);
+  assert.match(cladding, /const crownDepth = compact \? 0\.16 : 0\.115/);
+  assert.match(cladding, /const edgeOwners = new Map/);
+  assert.match(cladding, /maxEdgeOwners/);
+  assert.match(cladding, /unexpectedBoundaryEdges/);
+  assert.match(cladding, /zeroAreaTriangles/);
   assert.match(scene, /floorMarker\.position\.y = DOME_BASE_Y/);
   assert.match(scene, /webgl-cylindrical-skybox/);
   assert.match(scene, /const FRAME_INTERVAL_MS = 1000 \/ 60/);
@@ -213,6 +228,16 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /const RESONANCE_RING_THICKNESS = 0\.18/);
   assert.match(scene, /const RESONANCE_RING_SPEED = 0\.18/);
   assert.match(scene, /elapsed \* RESONANCE_RING_SPEED/);
+  assert.match(scene, /const WIRE_VISIBILITY_EPSILON = 0\.001/);
+  assert.match(
+    scene,
+    /const wireMaterial = new THREE\.LineBasicMaterial\(\{[\s\S]*?opacity: 0,[\s\S]*?depthWrite: false,[\s\S]*?\}\)/,
+  );
+  assert.match(scene, /wire\.visible = false/);
+  assert.match(
+    scene,
+    /wire\.visible = wireOpacity > WIRE_VISIBILITY_EPSILON/,
+  );
   assert.match(scene, /new THREE\.DataTexture\(/);
   assert.match(scene, /map: particleTexture/);
   assert.match(scene, /const PARTICLE_COUNT = 840/);
