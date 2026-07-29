@@ -160,6 +160,11 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /sceneState = "idle"/);
   assert.match(experience, /src="\/footer-mark\.svg"/);
   assert.match(experience, /const MOBILE_SCROLL_LOCK_CLASS/);
+  assert.match(
+    experience,
+    /external: "\\u2197\\uFE0E",\s*down: "\\u2193\\uFE0E"/,
+  );
+  assert.match(styles, /\.text-arrow \{[\s\S]*font-variant-emoji: text/);
   assert.match(experience, /event\.preventDefault\(\)/);
   assert.match(
     experience,

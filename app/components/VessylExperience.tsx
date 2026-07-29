@@ -12,6 +12,10 @@ const DomeScene = dynamic(
 const BOOKING_URL =
   "https://be.synxis.com/?adult=1&chain=27398&child=0&currency=CRC&hotel=99564&level=hotel&locale=en-US&productcurrency=CRC&rooms=1";
 const MOBILE_SCROLL_LOCK_CLASS = "mobile-scroll-locked";
+const TEXT_ARROWS = {
+  external: "\u2197\uFE0E",
+  down: "\u2193\uFE0E",
+} as const;
 
 const chapters = [
   { id: "top", label: "Arrival" },
@@ -46,7 +50,11 @@ const stages = [
 ];
 
 function Arrow() {
-  return <span aria-hidden="true">↗</span>;
+  return (
+    <span className="text-arrow" aria-hidden="true">
+      {TEXT_ARROWS.external}
+    </span>
+  );
 }
 
 export function VessylExperience() {
@@ -323,7 +331,9 @@ export function VessylExperience() {
                   onClick={(event) => navigateToChapter(event, "dome")}
                 >
                   Enter The Dome
-                  <span aria-hidden="true">↓</span>
+                  <span className="text-arrow" aria-hidden="true">
+                    {TEXT_ARROWS.down}
+                  </span>
                 </a>
                 <a
                   className="text-link"

@@ -340,6 +340,11 @@ img {
   transition: transform 0.3s ease;
 }
 
+.text-arrow {
+  font-family: var(--font-sans), Arial, sans-serif;
+  font-variant-emoji: text;
+}
+
 .header-book:hover span,
 .text-link:hover span,
 .button:hover span,
