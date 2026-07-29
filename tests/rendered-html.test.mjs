@@ -128,6 +128,20 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /webgl-cylindrical-skybox/);
   assert.match(scene, /const FRAME_INTERVAL_MS = 1000 \/ 60/);
   assert.doesNotMatch(scene, /1000 \/ (?:24|30)/);
+  assert.match(
+    scene,
+    /desktop: 1\.4,\s*tablet: 1\.4,\s*mobileWide: 1\.3,\s*mobile: 1\.2,\s*small: 1\.2/,
+  );
+  assert.match(
+    scene,
+    /if \(width > 1100\)[\s\S]*if \(width > 820\)[\s\S]*if \(width > 760\)[\s\S]*if \(width > 520\)/,
+  );
+  assert.match(
+    scene,
+    /renderer\.setPixelRatio\(getViewportRenderScale\(window\.innerWidth\)\)/,
+  );
+  assert.match(scene, /const pixelRatio = getViewportRenderScale\(width\)/);
+  assert.doesNotMatch(scene, /window\.devicePixelRatio/);
   assert.match(scene, /fxaa: true,\s*msaa: false,\s*msaaSamples: 4/);
   assert.match(scene, /antialias: ANTIALIASING\.msaa/);
   assert.match(

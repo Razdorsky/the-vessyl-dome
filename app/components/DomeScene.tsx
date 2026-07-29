@@ -41,6 +41,13 @@ const ANTIALIASING = {
   msaa: false,
   msaaSamples: 4,
 } as const;
+const VIEWPORT_RENDER_SCALE = {
+  desktop: 1.4,
+  tablet: 1.4,
+  mobileWide: 1.3,
+  mobile: 1.2,
+  small: 1.2,
+} as const;
 const RESONANCE_RING_INNER_OFFSET = 0.065;
 const RESONANCE_RING_THICKNESS = 0.18;
 const RESONANCE_RING_SPEED = 0.18;
@@ -49,6 +56,14 @@ const LOW_POWER_PARTICLE_COUNT = 320;
 
 function seededNoise(value: number) {
   return Math.sin(value * 12.9898) * 43758.5453 % 1;
+}
+
+function getViewportRenderScale(width: number) {
+  if (width > 1100) return VIEWPORT_RENDER_SCALE.desktop;
+  if (width > 820) return VIEWPORT_RENDER_SCALE.tablet;
+  if (width > 760) return VIEWPORT_RENDER_SCALE.mobileWide;
+  if (width > 520) return VIEWPORT_RENDER_SCALE.mobile;
+  return VIEWPORT_RENDER_SCALE.small;
 }
 
 function createDomeGeometry(radius: number, compact: boolean) {
@@ -475,9 +490,7 @@ export function DomeScene() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, compact ? 1 : 1.25),
-    );
+    renderer.setPixelRatio(getViewportRenderScale(window.innerWidth));
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x070908, 0.056);
@@ -956,10 +969,7 @@ export function DomeScene() {
       if (!renderer) return;
       const width = window.innerWidth;
       const height = window.innerHeight;
-      const pixelRatio = Math.min(
-        window.devicePixelRatio,
-        compact ? 1 : 1.25,
-      );
+      const pixelRatio = getViewportRenderScale(width);
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
       composer.setPixelRatio(pixelRatio);
