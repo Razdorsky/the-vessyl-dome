@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 
@@ -60,6 +60,9 @@ function Arrow() {
 export function VessylExperience() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLElement>(null);
+  const navigationFrameRef = useRef(0);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -83,20 +86,26 @@ export function VessylExperience() {
 
     let progressFrame = 0;
     let pointerFrame = 0;
+    let layoutFrame = 0;
     let pointerX = window.innerWidth / 2;
     let pointerY = window.innerHeight / 2;
+    let pageScrollRange = Math.max(
+      1,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
     const finePointer = window.matchMedia("(pointer: fine)");
+    const desktopRail = window.matchMedia("(min-width: 821px)");
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     );
 
     const commitProgress = () => {
       progressFrame = 0;
-      const max = Math.max(
+      if (!desktopRail.matches) return;
+      const pageProgress = Math.min(
         1,
-        document.documentElement.scrollHeight - window.innerHeight,
+        Math.max(0, window.scrollY / pageScrollRange),
       );
-      const pageProgress = Math.min(1, Math.max(0, window.scrollY / max));
       root.style.setProperty(
         "--page-progress",
         String(pageProgress),
@@ -106,6 +115,20 @@ export function VessylExperience() {
     const updateProgress = () => {
       if (progressFrame) return;
       progressFrame = window.requestAnimationFrame(commitProgress);
+    };
+
+    const commitLayout = () => {
+      layoutFrame = 0;
+      pageScrollRange = Math.max(
+        1,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      updateProgress();
+    };
+
+    const updateLayout = () => {
+      if (layoutFrame) return;
+      layoutFrame = window.requestAnimationFrame(commitLayout);
     };
 
     const updatePointer = (event: PointerEvent) => {
@@ -121,7 +144,9 @@ export function VessylExperience() {
     };
 
     window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateLayout);
     window.addEventListener("pointermove", updatePointer, { passive: true });
+    desktopRail.addEventListener("change", updateLayout);
     commitProgress();
 
     const revealTimer = window.setTimeout(() => {
@@ -132,9 +157,12 @@ export function VessylExperience() {
       observer.disconnect();
       window.cancelAnimationFrame(progressFrame);
       window.cancelAnimationFrame(pointerFrame);
+      window.cancelAnimationFrame(layoutFrame);
       window.clearTimeout(revealTimer);
       window.removeEventListener("scroll", updateProgress);
+      window.removeEventListener("resize", updateLayout);
       window.removeEventListener("pointermove", updatePointer);
+      desktopRail.removeEventListener("change", updateLayout);
       root.classList.remove("experience-ready");
       root.style.removeProperty("--page-progress");
       root.style.removeProperty("--pointer-x");
@@ -152,26 +180,80 @@ export function VessylExperience() {
       return;
     }
 
+    const mobileMenuQuery = window.matchMedia("(max-width: 820px)");
+
+    const focusableLinks = () =>
+      Array.from(
+        mobileMenuRef.current?.querySelectorAll<HTMLAnchorElement>(
+          "a[href]",
+        ) ?? [],
+      );
+    const focusTimer = window.setTimeout(() => {
+      focusableLinks()[0]?.focus();
+    }, 60);
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMenuOpen(false);
+        menuToggleRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const links = focusableLinks();
+      if (links.length === 0) return;
+      const first = links[0];
+      const last = links[links.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    const handleMobileBreakpoint = (event: MediaQueryListEvent) => {
+      if (!event.matches) setMenuOpen(false);
     };
 
     document.body.classList.add(MOBILE_SCROLL_LOCK_CLASS);
     window.addEventListener("keydown", handleKeyDown);
+    mobileMenuQuery.addEventListener("change", handleMobileBreakpoint);
 
     return () => {
+      window.clearTimeout(focusTimer);
       releaseScrollLock();
       window.removeEventListener("keydown", handleKeyDown);
+      mobileMenuQuery.removeEventListener("change", handleMobileBreakpoint);
     };
   }, [menuOpen]);
+
+  useEffect(
+    () => () => window.cancelAnimationFrame(navigationFrameRef.current),
+    [],
+  );
 
   const closeMenu = () => setMenuOpen(false);
   const navigateToChapter = (
     event: MouseEvent<HTMLAnchorElement>,
     chapterId: string,
   ) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
     event.preventDefault();
-    event.currentTarget.blur();
+    const keyboardActivation = event.detail === 0;
+    if (!keyboardActivation) event.currentTarget.blur();
 
     document.body.classList.remove(MOBILE_SCROLL_LOCK_CLASS);
     setMenuOpen(false);
@@ -185,7 +267,10 @@ export function VessylExperience() {
     const behavior = reducedMotion ? "auto" : "smooth";
     const hash = `#${chapterId}`;
 
-    window.requestAnimationFrame(() => {
+    window.cancelAnimationFrame(navigationFrameRef.current);
+    navigationFrameRef.current = window.requestAnimationFrame(() => {
+      navigationFrameRef.current = 0;
+      if (keyboardActivation) target.focus({ preventScroll: true });
       target.scrollIntoView({ behavior, block: "start" });
       if (window.location.hash === hash) {
         window.history.replaceState(null, "", hash);
@@ -197,6 +282,9 @@ export function VessylExperience() {
 
   return (
     <div className="experience">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <div className="scene-shell" aria-hidden="true">
         <DomeScene />
         <div className="scene-fallback" />
@@ -245,6 +333,7 @@ export function VessylExperience() {
         </a>
 
         <button
+          ref={menuToggleRef}
           className="menu-toggle"
           type="button"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -257,10 +346,13 @@ export function VessylExperience() {
         </button>
       </header>
 
-      <div
+      <nav
+        ref={mobileMenuRef}
         className={`mobile-menu${menuOpen ? " is-open" : ""}`}
         id="mobile-navigation"
+        aria-label="Mobile navigation"
         aria-hidden={!menuOpen}
+        inert={!menuOpen}
       >
         <div className="mobile-menu-inner">
           {chapters.slice(1).map((chapter, index) => (
@@ -284,15 +376,16 @@ export function VessylExperience() {
             <Arrow />
           </a>
         </div>
-      </div>
+      </nav>
 
-      <aside className="chapter-rail" aria-label="Page chapters">
+      <nav className="chapter-rail" aria-label="Page chapters">
         <span className="rail-progress" aria-hidden="true" />
         {chapters.map((chapter, index) => (
           <a
             key={chapter.id}
             href={`#${chapter.id}`}
             className={activeChapter === index ? "is-active" : ""}
+            aria-current={activeChapter === index ? "location" : undefined}
             aria-label={`Go to ${chapter.label}`}
             onClick={(event) => navigateToChapter(event, chapter.id)}
           >
@@ -300,10 +393,15 @@ export function VessylExperience() {
             <i />
           </a>
         ))}
-      </aside>
+      </nav>
 
-      <main>
-        <section className="chapter hero" id="top" data-chapter="0">
+      <main id="main-content" tabIndex={-1}>
+        <section
+          className="chapter hero"
+          id="top"
+          data-chapter="0"
+          tabIndex={-1}
+        >
           <div className="chapter-inner hero-inner">
             <div className="hero-copy reveal">
               <p className="eyebrow">
@@ -364,7 +462,12 @@ export function VessylExperience() {
           </div>
         </section>
 
-        <section className="chapter chapter-dome" id="dome" data-chapter="1">
+        <section
+          className="chapter chapter-dome"
+          id="dome"
+          data-chapter="1"
+          tabIndex={-1}
+        >
           <div className="chapter-inner align-right">
             <div className="section-copy reveal">
               <p className="section-index">
@@ -407,6 +510,7 @@ export function VessylExperience() {
           className="chapter chapter-experience"
           id="experience"
           data-chapter="2"
+          tabIndex={-1}
         >
           <div className="chapter-inner">
             <div className="journey-heading reveal">
@@ -438,7 +542,12 @@ export function VessylExperience() {
           </div>
         </section>
 
-        <section className="chapter chapter-place" id="arenal" data-chapter="3">
+        <section
+          className="chapter chapter-place"
+          id="arenal"
+          data-chapter="3"
+          tabIndex={-1}
+        >
           <div className="chapter-inner media-layout">
             <div className="section-copy reveal">
               <p className="section-index">
@@ -482,7 +591,12 @@ export function VessylExperience() {
           </div>
         </section>
 
-        <section className="chapter chapter-stay" id="stay" data-chapter="4">
+        <section
+          className="chapter chapter-stay"
+          id="stay"
+          data-chapter="4"
+          tabIndex={-1}
+        >
           <div className="chapter-inner media-layout media-layout-reverse">
             <figure className="photo-portal portal-stay reveal">
               <picture>
@@ -532,7 +646,12 @@ export function VessylExperience() {
           </div>
         </section>
 
-        <section className="chapter chapter-book" id="book" data-chapter="5">
+        <section
+          className="chapter chapter-book"
+          id="book"
+          data-chapter="5"
+          tabIndex={-1}
+        >
           <div className="chapter-inner book-inner">
             <div className="book-copy reveal">
               <p className="section-index centered">

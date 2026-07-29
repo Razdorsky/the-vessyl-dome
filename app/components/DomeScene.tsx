@@ -21,6 +21,11 @@ type SceneKeyframe = {
   sky: number;
 };
 
+type SceneSample = Pick<
+  SceneKeyframe,
+  "scale" | "rotation" | "tiles" | "shell" | "wire" | "resonance" | "sky"
+>;
+
 const COPPER = new THREE.Color("#d57e3d");
 const COPPER_LIGHT = new THREE.Color("#f5c6a3");
 const COPPER_DARK = new THREE.Color("#2a1309");
@@ -391,6 +396,7 @@ function sampleKeyframes(
   camera: THREE.Vector3,
   target: THREE.Vector3,
   dome: THREE.Vector3,
+  sample: SceneSample,
 ) {
   let start = keyframes[0];
   let end = keyframes[keyframes.length - 1];
@@ -413,19 +419,22 @@ function sampleKeyframes(
   mixVector(target, start.target, end.target, amount);
   mixVector(dome, start.dome, end.dome, amount);
 
-  return {
-    scale: THREE.MathUtils.lerp(start.scale, end.scale, amount),
-    rotation: THREE.MathUtils.lerp(start.rotation, end.rotation, amount),
-    tiles: THREE.MathUtils.lerp(start.tiles, end.tiles, amount),
-    shell: THREE.MathUtils.lerp(start.shell, end.shell, amount),
-    wire: THREE.MathUtils.lerp(start.wire, end.wire, amount),
-    resonance: THREE.MathUtils.lerp(
-      start.resonance,
-      end.resonance,
-      amount,
-    ),
-    sky: THREE.MathUtils.lerp(start.sky, end.sky, amount),
-  };
+  sample.scale = THREE.MathUtils.lerp(start.scale, end.scale, amount);
+  sample.rotation = THREE.MathUtils.lerp(
+    start.rotation,
+    end.rotation,
+    amount,
+  );
+  sample.tiles = THREE.MathUtils.lerp(start.tiles, end.tiles, amount);
+  sample.shell = THREE.MathUtils.lerp(start.shell, end.shell, amount);
+  sample.wire = THREE.MathUtils.lerp(start.wire, end.wire, amount);
+  sample.resonance = THREE.MathUtils.lerp(
+    start.resonance,
+    end.resonance,
+    amount,
+  );
+  sample.sky = THREE.MathUtils.lerp(start.sky, end.sky, amount);
+  return sample;
 }
 
 export function DomeScene() {
@@ -439,6 +448,7 @@ export function DomeScene() {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const compactQuery = window.matchMedia("(max-width: 760px)");
     const pointerQuery = window.matchMedia("(pointer: fine)");
+    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
     const connection = (
       navigator as Navigator & {
         connection?: { saveData?: boolean };
@@ -446,16 +456,22 @@ export function DomeScene() {
     ).connection;
     let prefersReducedMotion = motionQuery.matches;
     let compact = compactQuery.matches;
-    let lowPower =
+    const resourceLowPower =
       compact ||
+      coarsePointerQuery.matches ||
+      navigator.maxTouchPoints > 0 ||
       Boolean(connection?.saveData) ||
       (navigator.hardwareConcurrency > 0 &&
         navigator.hardwareConcurrency <= 4);
+    let lowPower = resourceLowPower || compact;
 
     let renderer: THREE.WebGLRenderer | undefined;
     let animationFrame = 0;
+    let resizeFrame = 0;
+    let resizeTimer = 0;
     let disposed = false;
     let contextLost = false;
+    let environmentReady = false;
     let targetProgress = 0;
     let currentProgress = 0;
     let pointerX = 0;
@@ -467,6 +483,11 @@ export function DomeScene() {
     let frameBudgetMs = 0;
     let motionElapsed = 0;
     let ringsChapterVisible = false;
+    let pageScrollRange = 1;
+    let viewportWidth = 0;
+    let viewportHeight = 0;
+    let viewportPixelRatio = 0;
+    let viewportFov = 0;
 
     root.classList.remove("no-webgl", "webgl-ready");
     delete root.dataset.sceneState;
@@ -520,7 +541,7 @@ export function DomeScene() {
     scene.add(environmentGroup);
 
     const environmentTexture = new THREE.TextureLoader().load(
-      compact ? "/media/arenal-mobile.webp" : "/media/arenal.webp",
+      resourceLowPower ? "/media/arenal-mobile.webp" : "/media/arenal.webp",
       (texture) => {
         if (disposed) {
           texture.dispose();
@@ -531,7 +552,18 @@ export function DomeScene() {
         texture.magFilter = THREE.LinearFilter;
         texture.anisotropy = Math.min(2, renderer?.capabilities.getMaxAnisotropy() ?? 1);
         texture.needsUpdate = true;
+        environmentReady = true;
+        if (!contextLost) {
+          root.classList.remove("no-webgl");
+          root.classList.add("webgl-ready");
+        }
         renderFrame();
+      },
+      undefined,
+      () => {
+        if (disposed) return;
+        environmentReady = false;
+        root.classList.remove("webgl-ready");
       },
     );
     environmentTexture.colorSpace = THREE.SRGBColorSpace;
@@ -542,7 +574,7 @@ export function DomeScene() {
       ENVIRONMENT_RADIUS,
       ENVIRONMENT_RADIUS,
       ENVIRONMENT_HEIGHT,
-      compact ? 40 : 56,
+      resourceLowPower ? 40 : 56,
       1,
       true,
     );
@@ -552,6 +584,9 @@ export function DomeScene() {
       depthWrite: false,
       side: THREE.BackSide,
       fog: false,
+      defines: {
+        LOW_POWER: resourceLowPower ? 1 : 0,
+      },
       uniforms: {
         uMap: { value: environmentTexture },
         uOpacity: { value: 0.42 },
@@ -567,8 +602,8 @@ export function DomeScene() {
         uCaptureOrigin: { value: new THREE.Vector3(0, 3, 7.6) },
         uTexel: {
           value: new THREE.Vector2(
-            1 / (compact ? 900 : 1800),
-            1 / (compact ? 483 : 966),
+            1 / (resourceLowPower ? 900 : 1800),
+            1 / (resourceLowPower ? 483 : 966),
           ),
         },
       },
@@ -607,10 +642,14 @@ export function DomeScene() {
             height
           );
           vec2 softOffset = vec2(uTexel.x * 1.35, 0.0);
+          #if LOW_POWER == 1
+          vec3 imageColor = texture2D(uMap, photoUv).rgb;
+          #else
           vec3 imageColor =
             texture2D(uMap, photoUv).rgb * 0.5 +
             texture2D(uMap, photoUv - softOffset).rgb * 0.25 +
             texture2D(uMap, photoUv + softOffset).rgb * 0.25;
+          #endif
           float luminance = dot(imageColor, vec3(0.299, 0.587, 0.114));
           imageColor = mix(vec3(luminance), imageColor, 0.62);
           imageColor *= vec3(0.44, 0.5, 0.52);
@@ -654,7 +693,7 @@ export function DomeScene() {
 
     const groundGeometry = new THREE.CircleGeometry(
       ENVIRONMENT_RADIUS,
-      compact ? 40 : 64,
+      resourceLowPower ? 40 : 64,
     );
     const groundMaterial = new THREE.MeshBasicMaterial({
       color: 0x07100f,
@@ -675,7 +714,7 @@ export function DomeScene() {
     domeGroup.add(floorMarker);
     root.dataset.sceneEnvironment = "webgl-cylindrical-skybox";
 
-    const domeGeometry = createDomeGeometry(DOME_RADIUS, lowPower);
+    const domeGeometry = createDomeGeometry(DOME_RADIUS, resourceLowPower);
     const shellMaterial = new THREE.MeshStandardMaterial({
       vertexColors: true,
       flatShading: false,
@@ -692,7 +731,7 @@ export function DomeScene() {
     shell.receiveShadow = false;
     domeGroup.add(shell);
 
-    const domeTiles = createDomeTiles(DOME_RADIUS, lowPower);
+    const domeTiles = createDomeTiles(DOME_RADIUS, resourceLowPower);
     domeGroup.add(domeTiles.mesh);
 
     const fresnelMaterial = new THREE.ShaderMaterial({
@@ -807,7 +846,7 @@ export function DomeScene() {
     domeGroup.add(polarGrid);
 
     const resonanceRings: THREE.Mesh[] = [];
-    const resonanceCount = lowPower ? 3 : 5;
+    const resonanceCount = resourceLowPower ? 3 : 5;
     for (let index = 0; index < resonanceCount; index += 1) {
       const geometry = new THREE.RingGeometry(
         DOME_RADIUS + RESONANCE_RING_INNER_OFFSET,
@@ -833,12 +872,12 @@ export function DomeScene() {
     }
 
     const particleGeometry = createParticles(
-      lowPower ? LOW_POWER_PARTICLE_COUNT : PARTICLE_COUNT,
+      resourceLowPower ? LOW_POWER_PARTICLE_COUNT : PARTICLE_COUNT,
     );
     const particleTexture = createParticleTexture();
     const particleMaterial = new THREE.PointsMaterial({
       color: 0xa9cad3,
-      size: compact ? 0.022 : 0.028,
+      size: resourceLowPower ? 0.022 : 0.028,
       map: particleTexture,
       transparent: true,
       opacity: 0.2,
@@ -947,14 +986,23 @@ export function DomeScene() {
     const sampledTarget = new THREE.Vector3();
     const sampledDome = new THREE.Vector3();
     const environmentFloor = new THREE.Vector3();
+    const sampledScene: SceneSample = {
+      scale: 1,
+      rotation: 0,
+      tiles: 1,
+      shell: 1,
+      wire: 1,
+      resonance: 1,
+      sky: 1,
+    };
 
     const updateScroll = () => {
       if (prefersReducedMotion) return;
-      const max = Math.max(
+      targetProgress = THREE.MathUtils.clamp(
+        window.scrollY / pageScrollRange,
+        0,
         1,
-        document.documentElement.scrollHeight - window.innerHeight,
       );
-      targetProgress = THREE.MathUtils.clamp(window.scrollY / max, 0, 1);
       wakeScene();
     };
 
@@ -965,23 +1013,57 @@ export function DomeScene() {
       wakeScene();
     };
 
-    const resize = () => {
+    const commitResize = () => {
+      resizeFrame = 0;
       if (!renderer) return;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const width = Math.max(1, window.innerWidth);
+      const height = Math.max(1, window.innerHeight);
       const pixelRatio = getViewportRenderScale(width);
-      renderer.setPixelRatio(pixelRatio);
-      renderer.setSize(width, height, false);
-      composer.setPixelRatio(pixelRatio);
-      composer.setSize(width, height);
+      const fov = compact ? 47 : 38;
+      pageScrollRange = Math.max(
+        1,
+        document.documentElement.scrollHeight - height,
+      );
+
+      const sizeChanged =
+        width !== viewportWidth || height !== viewportHeight;
+      const pixelRatioChanged = pixelRatio !== viewportPixelRatio;
+      const projectionChanged = sizeChanged || fov !== viewportFov;
+
+      if (!sizeChanged && !pixelRatioChanged && !projectionChanged) return;
+
+      if (pixelRatioChanged) {
+        renderer.setPixelRatio(pixelRatio);
+        composer.setPixelRatio(pixelRatio);
+      }
+      if (sizeChanged) {
+        renderer.setSize(width, height, false);
+        composer.setSize(width, height);
+      }
+
+      viewportWidth = width;
+      viewportHeight = height;
+      viewportPixelRatio = pixelRatio;
+      viewportFov = fov;
       camera.aspect = width / height;
-      camera.fov = compact ? 47 : 38;
+      camera.fov = fov;
       camera.updateProjectionMatrix();
+
       if (prefersReducedMotion) {
         renderFrame();
       } else {
         wakeScene();
       }
+    };
+
+    const scheduleResize = () => {
+      if (disposed) return;
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        resizeTimer = 0;
+        if (resizeFrame) return;
+        resizeFrame = window.requestAnimationFrame(commitResize);
+      }, 80);
     };
 
     function renderFrame() {
@@ -993,6 +1075,7 @@ export function DomeScene() {
         sampledCamera,
         sampledTarget,
         sampledDome,
+        sampledScene,
       );
 
       camera.position.copy(sampledCamera);
@@ -1008,7 +1091,6 @@ export function DomeScene() {
       domeGroup.rotation.y =
         sampled.rotation + (prefersReducedMotion ? 0 : elapsed * 0.025);
       domeGroup.rotation.z = currentPointerX * -0.024;
-      domeGroup.updateMatrixWorld(true);
       floorMarker.getWorldPosition(environmentFloor);
       environmentGroup.position.y = environmentFloor.y;
 
@@ -1036,7 +1118,13 @@ export function DomeScene() {
         currentProgress * 0.45 + (prefersReducedMotion ? 0 : elapsed * 0.006);
       particles.rotation.x = currentPointerY * 0.018;
 
-      resonanceRings.forEach((ring) => {
+      const showResonanceRings =
+        ringsChapterVisible && sampled.resonance > 0.01;
+      for (let index = 0; index < resonanceRings.length; index += 1) {
+        const ring = resonanceRings[index];
+        ring.visible = showResonanceRings;
+        if (!showResonanceRings) continue;
+
         const phase = prefersReducedMotion
           ? ring.userData.phase
           : (elapsed * RESONANCE_RING_SPEED + ring.userData.phase) % 1;
@@ -1044,7 +1132,7 @@ export function DomeScene() {
         ring.scale.setScalar(scale);
         (ring.material as THREE.MeshBasicMaterial).opacity =
           (1 - phase) * 0.12 * sampled.resonance;
-      });
+      }
 
       composer.render();
     }
@@ -1138,14 +1226,40 @@ export function DomeScene() {
       root.dataset.sceneState = "idle";
     };
 
+    const handleContextRestored = () => {
+      if (disposed) return;
+      contextLost = false;
+      root.classList.remove("no-webgl");
+      if (environmentReady) root.classList.add("webgl-ready");
+
+      viewportWidth = 0;
+      viewportHeight = 0;
+      viewportPixelRatio = 0;
+      viewportFov = 0;
+      previousFrame = performance.now();
+      previousAnimationTick = previousFrame;
+      commitResize();
+      renderFrame();
+      if (!prefersReducedMotion) wakeScene();
+    };
+
     const handleMotionPreference = (event: MediaQueryListEvent) => {
       prefersReducedMotion = event.matches;
       window.cancelAnimationFrame(animationFrame);
       animationFrame = 0;
 
       if (prefersReducedMotion) {
-        targetProgress = 0;
-        currentProgress = 0;
+        pageScrollRange = Math.max(
+          1,
+          document.documentElement.scrollHeight - window.innerHeight,
+        );
+        const scrollProgress = THREE.MathUtils.clamp(
+          window.scrollY / pageScrollRange,
+          0,
+          1,
+        );
+        targetProgress = scrollProgress;
+        currentProgress = scrollProgress;
         pointerX = 0;
         pointerY = 0;
         currentPointerX = 0;
@@ -1160,12 +1274,8 @@ export function DomeScene() {
 
     const handleCompactPreference = (event: MediaQueryListEvent) => {
       compact = event.matches;
-      lowPower =
-        compact ||
-        Boolean(connection?.saveData) ||
-        (navigator.hardwareConcurrency > 0 &&
-          navigator.hardwareConcurrency <= 4);
-      resize();
+      lowPower = resourceLowPower || compact;
+      scheduleResize();
     };
 
     const experienceSection = document.getElementById("experience");
@@ -1190,17 +1300,18 @@ export function DomeScene() {
     root.dataset.sceneRings = "paused";
 
     window.addEventListener("scroll", updateScroll, { passive: true });
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", scheduleResize);
+    window.visualViewport?.addEventListener("resize", scheduleResize);
     window.addEventListener("pointermove", updatePointer, { passive: true });
     document.addEventListener("visibilitychange", handleVisibility);
     canvas.addEventListener("webglcontextlost", handleContextLost);
+    canvas.addEventListener("webglcontextrestored", handleContextRestored);
     motionQuery.addEventListener("change", handleMotionPreference);
     compactQuery.addEventListener("change", handleCompactPreference);
 
-    resize();
+    commitResize();
     updateScroll();
     renderFrame();
-    root.classList.add("webgl-ready");
     if (!prefersReducedMotion) {
       wakeScene();
     } else {
@@ -1210,11 +1321,18 @@ export function DomeScene() {
     return () => {
       disposed = true;
       window.cancelAnimationFrame(animationFrame);
+      window.cancelAnimationFrame(resizeFrame);
+      window.clearTimeout(resizeTimer);
       window.removeEventListener("scroll", updateScroll);
-      window.removeEventListener("resize", resize);
+      window.removeEventListener("resize", scheduleResize);
+      window.visualViewport?.removeEventListener("resize", scheduleResize);
       window.removeEventListener("pointermove", updatePointer);
       document.removeEventListener("visibilitychange", handleVisibility);
       canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener(
+        "webglcontextrestored",
+        handleContextRestored,
+      );
       motionQuery.removeEventListener("change", handleMotionPreference);
       compactQuery.removeEventListener("change", handleCompactPreference);
       ringsVisibilityObserver.disconnect();

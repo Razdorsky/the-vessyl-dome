@@ -1,19 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Prata } from "next/font/google";
 import "./globals.css";
-
-const manrope = Manrope({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const prata = Prata({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 const TYPOGRAPHY_PROFILE: "legacy" | "updated" = "updated";
 
@@ -76,10 +62,22 @@ export default function RootLayout({
     <html lang="en" data-typography={TYPOGRAPHY_PROFILE}>
       <head>
         <link rel="icon" href="/vessyl-mark.svg" type="image/svg+xml" />
+        <link
+          rel="preload"
+          href="/fonts/manrope-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/prata-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
-      <body className={`${manrope.variable} ${prata.variable}`}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -41,6 +41,16 @@ test("server-renders The Vessyl experience", async () => {
   );
   assert.match(html, /Book The Vessyl/);
   assert.match(html, /scene-fallback/);
+  const fontPreloads = [
+    ...html.matchAll(/<link[^>]+href="([^"]+)"[^>]+as="font"[^>]*>/gi),
+  ].map((match) => match[1]);
+  assert.deepEqual(
+    [...new Set(fontPreloads)].sort(),
+    ["/fonts/manrope-latin.woff2", "/fonts/prata-latin.woff2"],
+  );
+  assert.match(html, /\/fonts\/manrope-latin\.woff2/);
+  assert.match(html, /\/fonts\/prata-latin\.woff2/);
+  assert.doesNotMatch(html, /_vinext_fonts\/(?:manrope|prata)/);
   assert.doesNotMatch(html, /\b(?:SIGNA|SYGNA)\b/i);
   assert.doesNotMatch(html, /codex-preview|Building your site/i);
 });
@@ -57,6 +67,10 @@ test("starter preview is fully removed", async () => {
   assert.match(layout, /process\.env\.NEXT_PUBLIC_SITE_URL/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
+  await Promise.all([
+    access(new URL("../public/fonts/manrope-latin.woff2", import.meta.url)),
+    access(new URL("../public/fonts/prata-latin.woff2", import.meta.url)),
+  ]);
 });
 
 test("updated typography keeps a one-switch legacy rollback", async () => {
@@ -71,6 +85,8 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(layout, /data-typography=\{TYPOGRAPHY_PROFILE\}/);
   assert.match(styles, /font-size: 0\.68rem/);
+  assert.match(styles, /font-family: "Vessyl Sans"/);
+  assert.match(styles, /font-family: "Vessyl Display"/);
   assert.match(styles, /:root\[data-typography="updated"\]/);
   assert.match(styles, /--type-brand-width: clamp\(209px, 18\.15vw, 277px\)/);
   assert.match(styles, /--type-brand-width: 213px/);
@@ -202,7 +218,28 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /const PARTICLE_COUNT = 840/);
   assert.match(scene, /const LOW_POWER_PARTICLE_COUNT = 320/);
   assert.match(scene, /sceneRings = isVisible \? "animating" : "paused"/);
+  assert.match(scene, /ring\.visible = showResonanceRings/);
   assert.match(scene, /sceneState = "idle"/);
+  assert.match(
+    scene,
+    /const resourceLowPower =[\s\S]*coarsePointerQuery\.matches[\s\S]*navigator\.maxTouchPoints > 0/,
+  );
+  assert.match(scene, /LOW_POWER: resourceLowPower \? 1 : 0/);
+  assert.match(
+    scene,
+    /#if LOW_POWER == 1\s*vec3 imageColor = texture2D\(uMap, photoUv\)\.rgb;/,
+  );
+  assert.match(scene, /const sampledScene: SceneSample/);
+  assert.match(scene, /sampledDome,\s*sampledScene,/);
+  assert.doesNotMatch(
+    scene,
+    /const updateScroll = \(\) => \{[\s\S]{0,320}scrollHeight/,
+  );
+  assert.match(scene, /const pixelRatioChanged = pixelRatio !== viewportPixelRatio/);
+  assert.match(scene, /window\.setTimeout\(\(\) => \{[\s\S]*requestAnimationFrame\(commitResize\)/);
+  assert.match(scene, /webglcontextrestored/);
+  assert.match(scene, /const handleContextRestored = \(\) =>/);
+  assert.doesNotMatch(scene, /domeGroup\.updateMatrixWorld\(true\)/);
   assert.match(experience, /src="\/footer-mark\.svg"/);
   assert.match(experience, /const MOBILE_SCROLL_LOCK_CLASS/);
   assert.match(
@@ -225,7 +262,27 @@ test("volcano environment is rendered by the Three.js world", async () => {
   );
   assert.doesNotMatch(experience, /mobileViewport|coarsePointer/);
   assert.doesNotMatch(experience, /document\.body\.style\.overflow/);
+  assert.match(experience, /window\.matchMedia\("\(max-width: 820px\)"\)/);
+  assert.match(experience, /mobileMenuQuery\.addEventListener\("change"/);
+  assert.match(experience, /inert=\{!menuOpen\}/);
+  assert.match(experience, /aria-current=\{activeChapter === index/);
+  assert.match(experience, /className="skip-link"/);
+  assert.match(experience, /event\.metaKey[\s\S]*event\.ctrlKey/);
+  assert.match(experience, /target\.focus\(\{ preventScroll: true \}\)/);
   assert.match(styles, /body \{[\s\S]*overflow-x: clip/);
+  assert.match(
+    styles,
+    /\.mobile-menu \{[\s\S]*overflow-y: auto;[\s\S]*overscroll-behavior: contain/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*url\("\/media\/dome-night\.webp"\)/,
+  );
+  assert.match(
+    styles,
+    /\.ambient-field::before \{[\s\S]*transform: translate3d\(/,
+  );
+  assert.match(styles, /\.signal-grid article \{[\s\S]*backdrop-filter: none/);
   assert.doesNotMatch(
     styles,
     /@media \(max-width: 820px\) \{\s*html \{\s*scroll-behavior: auto/,
