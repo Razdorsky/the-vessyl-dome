@@ -7,6 +7,7 @@ import { FXAAPass } from "three/addons/postprocessing/FXAAPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { createDomeCladdingGeometry } from "./domeCladding";
+import { createParticleFieldPositions } from "./particleField";
 
 type SceneKeyframe = {
   at: number;
@@ -36,15 +37,18 @@ const DOME_DRUM_HEIGHT = DOME_RADIUS * 0.62;
 const DOME_SPRING_Y = 0;
 const DOME_BASE_Y = DOME_SPRING_Y - DOME_DRUM_HEIGHT;
 const DOME_TOP_Y = DOME_SPRING_Y + DOME_RADIUS;
+const DOME_MAX_SCENE_SCALE = 1.08;
 const ENVIRONMENT_RADIUS = 22;
 const ENVIRONMENT_HEIGHT = 15.5;
 const ENVIRONMENT_PHOTO_FOV = 68;
+const ENVIRONMENT_GROUND_COLOR = 0x07100f;
 const FRAME_INTERVAL_MS = 1000 / 60;
 const ANTIALIASING = {
   fxaa: true,
   msaa: false,
   msaaSamples: 4,
 } as const;
+const LOW_POWER_MODE_ENABLED: boolean = false;
 const VIEWPORT_RENDER_SCALE = {
   desktop: 1.4,
   tablet: 1.4,
@@ -53,11 +57,14 @@ const VIEWPORT_RENDER_SCALE = {
   small: 1.2,
 } as const;
 const RESONANCE_RING_INNER_OFFSET = 0.065;
-const RESONANCE_RING_THICKNESS = 0.18;
-const RESONANCE_RING_SPEED = 0.18;
+const RESONANCE_RING_THICKNESS = 0.2;
+const RESONANCE_RING_SPEED = 0.2;
 const WIRE_VISIBILITY_EPSILON = 0.001;
-const PARTICLE_COUNT = 840;
-const LOW_POWER_PARTICLE_COUNT = 320;
+const PARTICLE_COUNT = 328;
+const LOW_POWER_PARTICLE_COUNT = 246;
+const PARTICLE_FIELD_RADIUS = 9;
+const PARTICLE_FIELD_HEIGHT = 6;
+const PARTICLE_DOME_CLEARANCE = 0.08;
 
 function seededNoise(value: number) {
   return Math.sin(value * 12.9898) * 43758.5453 % 1;
@@ -146,15 +153,14 @@ function createDomeGeometry(radius: number, compact: boolean) {
 }
 
 function createParticles(count: number) {
-  const positions = new Float32Array(count * 3);
-
-  for (let index = 0; index < count; index += 1) {
-    const radius = 4 + Math.random() * 8;
-    const angle = Math.random() * Math.PI * 2;
-    positions[index * 3] = Math.cos(angle) * radius;
-    positions[index * 3 + 1] = -1.8 + Math.random() * 8;
-    positions[index * 3 + 2] = Math.sin(angle) * radius - 2;
-  }
+  const positions = createParticleFieldPositions({
+    count,
+    fieldRadius: PARTICLE_FIELD_RADIUS,
+    fieldHeight: PARTICLE_FIELD_HEIGHT,
+    domeRadius: DOME_RADIUS * DOME_MAX_SCENE_SCALE,
+    domeDrumHeight: DOME_DRUM_HEIGHT * DOME_MAX_SCENE_SCALE,
+    domeClearance: PARTICLE_DOME_CLEARANCE,
+  });
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
@@ -284,7 +290,6 @@ export function DomeScene() {
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const compactQuery = window.matchMedia("(max-width: 760px)");
     const pointerQuery = window.matchMedia("(pointer: fine)");
-    const coarsePointerQuery = window.matchMedia("(pointer: coarse)");
     const connection = (
       navigator as Navigator & {
         connection?: { saveData?: boolean };
@@ -292,14 +297,12 @@ export function DomeScene() {
     ).connection;
     let prefersReducedMotion = motionQuery.matches;
     let compact = compactQuery.matches;
-    const resourceLowPower =
-      compact ||
-      coarsePointerQuery.matches ||
-      navigator.maxTouchPoints > 0 ||
+    const resourceConstrained =
       Boolean(connection?.saveData) ||
       (navigator.hardwareConcurrency > 0 &&
         navigator.hardwareConcurrency <= 4);
-    let lowPower = resourceLowPower || compact;
+    let lowPower =
+      LOW_POWER_MODE_ENABLED && (resourceConstrained || compact);
 
     let renderer: THREE.WebGLRenderer | undefined;
     let animationFrame = 0;
@@ -318,7 +321,6 @@ export function DomeScene() {
     let previousAnimationTick = performance.now();
     let frameBudgetMs = 0;
     let motionElapsed = 0;
-    let ringsChapterVisible = false;
     let pageScrollRange = 1;
     let viewportWidth = 0;
     let viewportHeight = 0;
@@ -329,7 +331,7 @@ export function DomeScene() {
     delete root.dataset.sceneState;
     delete root.dataset.sceneEnvironment;
     delete root.dataset.sceneAntialiasing;
-    delete root.dataset.sceneRings;
+    delete root.dataset.scenePowerMode;
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
@@ -337,6 +339,7 @@ export function DomeScene() {
         antialias: ANTIALIASING.msaa,
         powerPreference: lowPower ? "low-power" : "default",
       });
+      root.dataset.scenePowerMode = lowPower ? "low-power" : "full";
     } catch {
       root.classList.add("no-webgl");
       return () => {
@@ -377,7 +380,7 @@ export function DomeScene() {
     scene.add(environmentGroup);
 
     const environmentTexture = new THREE.TextureLoader().load(
-      resourceLowPower ? "/media/arenal-mobile.webp" : "/media/arenal.webp",
+      compact ? "/media/arenal-mobile.webp" : "/media/arenal.webp",
       (texture) => {
         if (disposed) {
           texture.dispose();
@@ -410,7 +413,7 @@ export function DomeScene() {
       ENVIRONMENT_RADIUS,
       ENVIRONMENT_RADIUS,
       ENVIRONMENT_HEIGHT,
-      resourceLowPower ? 40 : 56,
+      compact ? 40 : 56,
       1,
       true,
     );
@@ -420,13 +423,13 @@ export function DomeScene() {
       depthWrite: false,
       side: THREE.BackSide,
       fog: false,
-      defines: {
-        LOW_POWER: resourceLowPower ? 1 : 0,
-      },
       uniforms: {
         uMap: { value: environmentTexture },
         uOpacity: { value: 0.42 },
         uEnvironmentHeight: { value: ENVIRONMENT_HEIGHT },
+        uGroundColor: {
+          value: new THREE.Color(ENVIRONMENT_GROUND_COLOR),
+        },
         uTanHalfFov: {
           value: Math.tan(
             THREE.MathUtils.degToRad(ENVIRONMENT_PHOTO_FOV / 2),
@@ -438,8 +441,8 @@ export function DomeScene() {
         uCaptureOrigin: { value: new THREE.Vector3(0, 3, 7.6) },
         uTexel: {
           value: new THREE.Vector2(
-            1 / (resourceLowPower ? 900 : 1800),
-            1 / (resourceLowPower ? 483 : 966),
+            1 / (compact ? 900 : 1800),
+            1 / (compact ? 483 : 966),
           ),
         },
       },
@@ -457,6 +460,7 @@ export function DomeScene() {
         uniform sampler2D uMap;
         uniform float uOpacity;
         uniform float uEnvironmentHeight;
+        uniform vec3 uGroundColor;
         uniform float uTanHalfFov;
         uniform float uPhotoHalfFov;
         uniform vec3 uCaptureOrigin;
@@ -477,15 +481,11 @@ export function DomeScene() {
             clamp(photoU, 0.0, 1.0),
             height
           );
-          vec2 softOffset = vec2(uTexel.x * 1.35, 0.0);
-          #if LOW_POWER == 1
-          vec3 imageColor = texture2D(uMap, photoUv).rgb;
-          #else
+          vec2 softOffset = vec2(uTexel.x * 1.8, 0.0);
           vec3 imageColor =
             texture2D(uMap, photoUv).rgb * 0.5 +
             texture2D(uMap, photoUv - softOffset).rgb * 0.25 +
             texture2D(uMap, photoUv + softOffset).rgb * 0.25;
-          #endif
           float luminance = dot(imageColor, vec3(0.299, 0.587, 0.114));
           imageColor = mix(vec3(luminance), imageColor, 0.62);
           imageColor *= vec3(0.44, 0.5, 0.52);
@@ -498,21 +498,23 @@ export function DomeScene() {
               uPhotoHalfFov + 0.12,
               abs(yaw)
             ));
-          vec3 groundColor = vec3(0.007, 0.016, 0.015);
           vec3 nightColor = mix(
             vec3(0.006, 0.012, 0.011),
             vec3(0.012, 0.022, 0.028),
             smoothstep(0.0, 0.78, height)
           );
           vec3 color = mix(nightColor, imageColor, imageMask);
+          float environmentBlend = smoothstep(0.0, 0.14, height);
           color = mix(
-            groundColor,
+            uGroundColor,
             color,
-            smoothstep(0.0, 0.09, height)
+            environmentBlend
           );
           color *= mix(0.68, 1.0, smoothstep(0.0, 0.2, 1.0 - height));
 
-          float alpha = uOpacity * mix(0.32, 1.0, imageMask);
+          float environmentAlpha =
+            uOpacity * mix(0.32, 1.0, imageMask);
+          float alpha = mix(1.0, environmentAlpha, environmentBlend);
           gl_FragColor = vec4(color, alpha);
           #include <tonemapping_fragment>
           #include <colorspace_fragment>
@@ -529,12 +531,12 @@ export function DomeScene() {
 
     const groundGeometry = new THREE.CircleGeometry(
       ENVIRONMENT_RADIUS,
-      resourceLowPower ? 40 : 64,
+      compact ? 40 : 64,
     );
     const groundMaterial = new THREE.MeshBasicMaterial({
-      color: 0x07100f,
+      color: ENVIRONMENT_GROUND_COLOR,
       side: THREE.DoubleSide,
-      fog: true,
+      fog: false,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
@@ -550,7 +552,7 @@ export function DomeScene() {
     domeGroup.add(floorMarker);
     root.dataset.sceneEnvironment = "webgl-cylindrical-skybox";
 
-    const domeGeometry = createDomeGeometry(DOME_RADIUS, resourceLowPower);
+    const domeGeometry = createDomeGeometry(DOME_RADIUS, lowPower);
     const shellMaterial = new THREE.MeshStandardMaterial({
       vertexColors: true,
       flatShading: false,
@@ -567,7 +569,7 @@ export function DomeScene() {
     shell.receiveShadow = false;
     domeGroup.add(shell);
 
-    const domeTiles = createDomeTiles(DOME_RADIUS, resourceLowPower);
+    const domeTiles = createDomeTiles(DOME_RADIUS, lowPower);
     domeGroup.add(domeTiles.mesh);
 
     const fresnelMaterial = new THREE.ShaderMaterial({
@@ -683,8 +685,12 @@ export function DomeScene() {
     });
     domeGroup.add(polarGrid);
 
+    const resonanceGroup = new THREE.Group();
+    resonanceGroup.renderOrder = 1;
+    scene.add(resonanceGroup);
+
     const resonanceRings: THREE.Mesh[] = [];
-    const resonanceCount = resourceLowPower ? 3 : 5;
+    const resonanceCount = lowPower ? 3 : 5;
     for (let index = 0; index < resonanceCount; index += 1) {
       const geometry = new THREE.RingGeometry(
         DOME_RADIUS + RESONANCE_RING_INNER_OFFSET,
@@ -703,19 +709,19 @@ export function DomeScene() {
       });
       const ring = new THREE.Mesh(geometry, material);
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = DOME_BASE_Y + 0.022;
+      ring.position.y = 0.022;
       ring.userData.phase = index / resonanceCount;
-      domeGroup.add(ring);
+      resonanceGroup.add(ring);
       resonanceRings.push(ring);
     }
 
     const particleGeometry = createParticles(
-      resourceLowPower ? LOW_POWER_PARTICLE_COUNT : PARTICLE_COUNT,
+      lowPower ? LOW_POWER_PARTICLE_COUNT : PARTICLE_COUNT,
     );
     const particleTexture = createParticleTexture();
     const particleMaterial = new THREE.PointsMaterial({
       color: 0xa9cad3,
-      size: resourceLowPower ? 0.022 : 0.028,
+      size: compact ? 0.022 : 0.028,
       map: particleTexture,
       transparent: true,
       opacity: 0.2,
@@ -723,6 +729,7 @@ export function DomeScene() {
       blending: THREE.AdditiveBlending,
     });
     const particles = new THREE.Points(particleGeometry, particleMaterial);
+    particles.position.y = DOME_BASE_Y;
     scene.add(particles);
 
     scene.add(new THREE.HemisphereLight(0xbcdde2, 0x080807, 0.72));
@@ -758,7 +765,7 @@ export function DomeScene() {
         camera: new THREE.Vector3(0.6, 0.72, 6.3),
         target: new THREE.Vector3(-1.25, 0.7, 0),
         dome: new THREE.Vector3(-1.75, -0.2, 0.15),
-        scale: 1.08,
+        scale: DOME_MAX_SCENE_SCALE,
         rotation: 0.24,
         tiles: 0.26,
         shell: 0.44,
@@ -931,10 +938,17 @@ export function DomeScene() {
       domeGroup.rotation.z = currentPointerX * -0.024;
       floorMarker.getWorldPosition(environmentFloor);
       environmentGroup.position.y = environmentFloor.y;
+      resonanceGroup.position.copy(environmentFloor);
+      resonanceGroup.scale.setScalar(sampled.scale);
+      resonanceGroup.rotation.set(0, domeGroup.rotation.y, 0);
+      particles.position.set(
+        domeGroup.position.x,
+        environmentFloor.y,
+        domeGroup.position.z,
+      );
 
       shellMaterial.opacity = sampled.shell;
       domeTiles.material.opacity = sampled.tiles;
-      domeTiles.mesh.visible = sampled.tiles > 0.075;
       environmentMaterial.uniforms.uOpacity.value = sampled.sky;
       shellMaterial.emissiveIntensity =
         0.18 + sampled.resonance * 0.16 +
@@ -956,15 +970,9 @@ export function DomeScene() {
 
       particles.rotation.y =
         currentProgress * 0.45 + (prefersReducedMotion ? 0 : elapsed * 0.006);
-      particles.rotation.x = currentPointerY * 0.018;
 
-      const showResonanceRings =
-        ringsChapterVisible && sampled.resonance > 0.01;
       for (let index = 0; index < resonanceRings.length; index += 1) {
         const ring = resonanceRings[index];
-        ring.visible = showResonanceRings;
-        if (!showResonanceRings) continue;
-
         const phase = prefersReducedMotion
           ? ring.userData.phase
           : (elapsed * RESONANCE_RING_SPEED + ring.userData.phase) % 1;
@@ -1114,30 +1122,11 @@ export function DomeScene() {
 
     const handleCompactPreference = (event: MediaQueryListEvent) => {
       compact = event.matches;
-      lowPower = resourceLowPower || compact;
+      lowPower =
+        LOW_POWER_MODE_ENABLED && (resourceConstrained || compact);
+      root.dataset.scenePowerMode = lowPower ? "low-power" : "full";
       scheduleResize();
     };
-
-    const experienceSection = document.getElementById("experience");
-    const ringsVisibilityObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        const isVisible = Boolean(entry?.isIntersecting);
-        if (ringsChapterVisible === isVisible) return;
-
-        ringsChapterVisible = isVisible;
-        root.dataset.sceneRings = isVisible ? "animating" : "paused";
-        if (isVisible) wakeScene();
-      },
-      {
-        rootMargin: "10% 0px 10% 0px",
-        threshold: 0.01,
-      },
-    );
-    if (experienceSection) {
-      ringsVisibilityObserver.observe(experienceSection);
-    }
-    root.dataset.sceneRings = "paused";
 
     window.addEventListener("scroll", updateScroll, { passive: true });
     window.addEventListener("resize", scheduleResize);
@@ -1175,12 +1164,11 @@ export function DomeScene() {
       );
       motionQuery.removeEventListener("change", handleMotionPreference);
       compactQuery.removeEventListener("change", handleCompactPreference);
-      ringsVisibilityObserver.disconnect();
       root.classList.remove("no-webgl", "webgl-ready");
       delete root.dataset.sceneState;
       delete root.dataset.sceneEnvironment;
       delete root.dataset.sceneAntialiasing;
-      delete root.dataset.sceneRings;
+      delete root.dataset.scenePowerMode;
 
       resonanceRings.forEach((ring) => {
         ring.geometry.dispose();

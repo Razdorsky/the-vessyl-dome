@@ -100,12 +100,12 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /--type-h2-experience: clamp\(47px, 4\.96vw, 91px\)/);
   assert.match(styles, /--type-h2-book: clamp\(55px, 6\.16vw, 116px\)/);
   assert.match(styles, /--type-h2: clamp\(46px, 5\.73vw, 87px\)/);
-  assert.match(styles, /--type-h1: clamp\(52px, 13\.68vw, 85px\)/);
-  assert.match(styles, /--type-h2: clamp\(44px, 11\.12vw, 75px\)/);
-  assert.match(styles, /--type-h2-book: clamp\(48px, 12\.4vw, 82px\)/);
-  assert.match(styles, /--type-h1: clamp\(46px, 13vw, 65px\)/);
-  assert.match(styles, /--type-h2: clamp\(40px, 10\.94vw, 57px\)/);
-  assert.match(styles, /--type-h2-book: clamp\(44px, 11\.54vw, 62px\)/);
+  assert.match(styles, /--type-h1: calc\(clamp\(52px, 13\.68vw, 85px\) - 1px\)/);
+  assert.match(styles, /--type-h2: calc\(clamp\(44px, 11\.12vw, 75px\) - 1px\)/);
+  assert.match(styles, /--type-h2-book: calc\(clamp\(48px, 12\.4vw, 82px\) - 1px\)/);
+  assert.match(styles, /--type-h1: calc\(clamp\(46px, 13vw, 65px\) - 1px\)/);
+  assert.match(styles, /--type-h2: calc\(clamp\(40px, 10\.94vw, 57px\) - 1px\)/);
+  assert.match(styles, /--type-h2-book: calc\(clamp\(44px, 11\.54vw, 62px\) - 1px\)/);
   assert.match(styles, /--type-nav: 12px/);
   assert.match(styles, /--type-mobile-cta: 14px/);
   assert.match(styles, /--type-lead: 20px/);
@@ -139,6 +139,50 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(
     styles,
+    /\.signal-grid article \{[\s\S]*?background: rgba\(7, 9, 8, 0\.36\);[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.signal-grid \{[\s\S]*?width: calc\(100% \+ 2\.5rem\);[\s\S]*?margin: 2rem -1\.25rem 0;[\s\S]*?\.signal-grid article \{[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /\.header-book \{[\s\S]*?background: rgba\(213, 126, 61, 0\.08\);[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /\.menu-toggle \{[\s\S]*?background: rgba\(7, 9, 8, 0\.38\);[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*?\.journey-path \{[\s\S]*?width: calc\(100% \+ 2\.5rem\);[\s\S]*?margin: 2\.5rem -1\.25rem 0;[\s\S]*?\.journey-path article \{[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /\.journey-path article \{[\s\S]*?z-index: 1;[\s\S]*?padding: 1\.2rem 1\.5rem;/,
+  );
+  assert.match(
+    styles,
+    /\.journey-path::before \{[\s\S]*?top: 3\.95rem;/,
+  );
+  assert.match(
+    styles,
+    /\.journey-path \{[\s\S]*?left: clamp\(1\.35rem, 7vw, 8rem\);[\s\S]*?right: clamp\(1\.35rem, 7vw, 8rem\);[\s\S]*?isolation: isolate;/,
+  );
+  assert.match(
+    styles,
+    /\.journey-path::after \{[\s\S]*?left: 50%;[\s\S]*?width: 100vw;[\s\S]*?transform: translateX\(-50%\);[\s\S]*?backdrop-filter: blur\(10px\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*?--type-h1: calc\(clamp\(52px, 13\.68vw, 85px\) - 1px\);[\s\S]*?--type-h2: calc\(clamp\(44px, 11\.12vw, 75px\) - 1px\);[\s\S]*?--type-h2-book: calc\(clamp\(48px, 12\.4vw, 82px\) - 1px\);/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 520px\) \{[\s\S]*?--type-h1: calc\(clamp\(46px, 13vw, 65px\) - 1px\);[\s\S]*?--type-h2: calc\(clamp\(40px, 10\.94vw, 57px\) - 1px\);[\s\S]*?--type-h2-book: calc\(clamp\(44px, 11\.54vw, 62px\) - 1px\);/,
+  );
+  assert.match(
+    styles,
     /\.portal-stay figcaption \{\s*top: 1\.45rem;\s*bottom: auto;/,
   );
   assert.match(
@@ -147,7 +191,7 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(
     styles,
-    /\.photo-portal img \{[\s\S]*transform: scale\(1\.25\);[\s\S]*transform 5s/,
+    /\.photo-portal img \{[\s\S]*transform: scale\(1\.3\);[\s\S]*transform 6s/,
   );
   assert.match(
     styles,
@@ -160,10 +204,14 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
 });
 
 test("volcano environment is rendered by the Three.js world", async () => {
-  const [scene, cladding, experience, styles] = await Promise.all([
+  const [scene, cladding, particles, experience, styles] = await Promise.all([
     readFile(new URL("../app/components/DomeScene.tsx", import.meta.url), "utf8"),
     readFile(
       new URL("../app/components/domeCladding.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/components/particleField.ts", import.meta.url),
       "utf8",
     ),
     readFile(
@@ -211,6 +259,7 @@ test("volcano environment is rendered by the Three.js world", async () => {
     /samples: ANTIALIASING\.msaa \? ANTIALIASING\.msaaSamples : 0/,
   );
   assert.doesNotMatch(scene, /alphaHash/);
+  assert.doesNotMatch(scene, /domeTiles\.mesh\.visible/);
   assert.match(
     scene,
     /opacity: 1,\s*transparent: true,\s*side: THREE\.FrontSide,\s*depthWrite: false/,
@@ -225,9 +274,20 @@ test("volcano environment is rendered by the Three.js world", async () => {
     /composer\.addPass\(renderPass\);[\s\S]*composer\.addPass\(outputPass\);[\s\S]*composer\.addPass\(fxaaPass\);/,
   );
   assert.doesNotMatch(scene, /idleDelay|lastInteractionAt/);
-  assert.match(scene, /const RESONANCE_RING_THICKNESS = 0\.18/);
-  assert.match(scene, /const RESONANCE_RING_SPEED = 0\.18/);
+  assert.match(scene, /const RESONANCE_RING_THICKNESS = 0\.2/);
+  assert.match(scene, /const RESONANCE_RING_SPEED = 0\.2/);
   assert.match(scene, /elapsed \* RESONANCE_RING_SPEED/);
+  assert.match(
+    scene,
+    /const resonanceGroup = new THREE\.Group\(\);[\s\S]*resonanceGroup\.renderOrder = 1;[\s\S]*scene\.add\(resonanceGroup\)/,
+  );
+  assert.match(scene, /ring\.position\.y = 0\.022/);
+  assert.match(scene, /resonanceGroup\.add\(ring\)/);
+  assert.doesNotMatch(scene, /domeGroup\.add\(ring\)/);
+  assert.match(
+    scene,
+    /resonanceGroup\.position\.copy\(environmentFloor\);[\s\S]*resonanceGroup\.scale\.setScalar\(sampled\.scale\);[\s\S]*resonanceGroup\.rotation\.set\(0, domeGroup\.rotation\.y, 0\)/,
+  );
   assert.match(scene, /const WIRE_VISIBILITY_EPSILON = 0\.001/);
   assert.match(
     scene,
@@ -240,20 +300,72 @@ test("volcano environment is rendered by the Three.js world", async () => {
   );
   assert.match(scene, /new THREE\.DataTexture\(/);
   assert.match(scene, /map: particleTexture/);
-  assert.match(scene, /const PARTICLE_COUNT = 840/);
-  assert.match(scene, /const LOW_POWER_PARTICLE_COUNT = 320/);
-  assert.match(scene, /sceneRings = isVisible \? "animating" : "paused"/);
-  assert.match(scene, /ring\.visible = showResonanceRings/);
+  assert.match(scene, /const PARTICLE_COUNT = 328/);
+  assert.match(scene, /const LOW_POWER_PARTICLE_COUNT = 246/);
+  assert.match(scene, /const PARTICLE_FIELD_RADIUS = 9/);
+  assert.match(scene, /const PARTICLE_FIELD_HEIGHT = 6/);
+  assert.match(scene, /createParticleFieldPositions\(/);
+  assert.match(
+    scene,
+    /particles\.position\.set\(\s*domeGroup\.position\.x,\s*environmentFloor\.y,\s*domeGroup\.position\.z/,
+  );
+  assert.doesNotMatch(scene, /particles\.rotation\.x/);
+  assert.match(particles, /fieldRadius \* Math\.sqrt\(halton\(candidate, 2\)\)/);
+  assert.match(particles, /isInsideDomeExclusion\(/);
+  assert.match(particles, /insideDome/);
+  assert.doesNotMatch(
+    scene,
+    /ringsChapterVisible|ringsVisibilityObserver|showResonanceRings/,
+  );
   assert.match(scene, /sceneState = "idle"/);
   assert.match(
     scene,
-    /const resourceLowPower =[\s\S]*coarsePointerQuery\.matches[\s\S]*navigator\.maxTouchPoints > 0/,
+    /const resourceConstrained =[\s\S]*connection\?\.saveData[\s\S]*navigator\.hardwareConcurrency <= 4/,
   );
-  assert.match(scene, /LOW_POWER: resourceLowPower \? 1 : 0/);
+  assert.match(scene, /const LOW_POWER_MODE_ENABLED: boolean = false/);
   assert.match(
     scene,
-    /#if LOW_POWER == 1\s*vec3 imageColor = texture2D\(uMap, photoUv\)\.rgb;/,
+    /let lowPower =\s*LOW_POWER_MODE_ENABLED && \(resourceConstrained \|\| compact\)/,
   );
+  assert.doesNotMatch(
+    scene,
+    /lowPower = resourceConstrained \|\| compact/,
+  );
+  assert.match(
+    scene,
+    /root\.dataset\.scenePowerMode = lowPower \? "low-power" : "full"/,
+  );
+  assert.doesNotMatch(scene, /coarsePointerQuery|navigator\.maxTouchPoints/);
+  assert.doesNotMatch(scene, /#if LOW_POWER|LOW_POWER:\s/);
+  assert.match(
+    scene,
+    /vec3 imageColor =\s*texture2D\(uMap, photoUv\)\.rgb \* 0\.5 \+\s*texture2D\(uMap, photoUv - softOffset\)\.rgb \* 0\.25 \+\s*texture2D\(uMap, photoUv \+ softOffset\)\.rgb \* 0\.25;/,
+  );
+  assert.match(scene, /softOffset = vec2\(uTexel\.x \* 1\.8, 0\.0\)/);
+  assert.match(scene, /const ENVIRONMENT_GROUND_COLOR = 0x07100f/);
+  assert.match(
+    scene,
+    /float environmentBlend = smoothstep\(0\.0, 0\.14, height\)/,
+  );
+  assert.match(
+    scene,
+    /float alpha = mix\(1\.0, environmentAlpha, environmentBlend\)/,
+  );
+  assert.match(
+    scene,
+    /color: ENVIRONMENT_GROUND_COLOR,\s*side: THREE\.DoubleSide,\s*fog: false/,
+  );
+  assert.match(
+    scene,
+    /compact \? "\/media\/arenal-mobile\.webp" : "\/media\/arenal\.webp"/,
+  );
+  assert.match(scene, /createDomeGeometry\(DOME_RADIUS, lowPower\)/);
+  assert.match(scene, /const resonanceCount = lowPower \? 3 : 5/);
+  assert.match(
+    scene,
+    /lowPower \? LOW_POWER_PARTICLE_COUNT : PARTICLE_COUNT/,
+  );
+  assert.match(scene, /size: compact \? 0\.022 : 0\.028/);
   assert.match(scene, /const sampledScene: SceneSample/);
   assert.match(scene, /sampledDome,\s*sampledScene,/);
   assert.doesNotMatch(
@@ -299,15 +411,16 @@ test("volcano environment is rendered by the Three.js world", async () => {
     styles,
     /\.mobile-menu \{[\s\S]*overflow-y: auto;[\s\S]*overscroll-behavior: contain/,
   );
-  assert.match(
-    styles,
-    /@media \(max-width: 820px\) \{[\s\S]*url\("\/media\/dome-night\.webp"\)/,
-  );
+  assert.match(styles, /url\("\/media\/dome-day\.webp"\) 72% center/);
+  assert.doesNotMatch(styles, /url\("\/media\/dome-night\.webp"\)/);
   assert.match(
     styles,
     /\.ambient-field::before \{[\s\S]*transform: translate3d\(/,
   );
-  assert.match(styles, /\.signal-grid article \{[\s\S]*backdrop-filter: none/);
+  assert.doesNotMatch(
+    styles,
+    /\.signal-grid article \{[^}]*backdrop-filter:\s*none/,
+  );
   assert.doesNotMatch(
     styles,
     /@media \(max-width: 820px\) \{\s*html \{\s*scroll-behavior: auto/,
