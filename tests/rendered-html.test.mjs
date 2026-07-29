@@ -92,10 +92,12 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /--type-h2-book: clamp\(44px, 11\.54vw, 62px\)/);
   assert.match(styles, /--type-nav: 12px/);
   assert.match(styles, /--type-mobile-cta: 14px/);
+  assert.match(styles, /--type-lead: 20px/);
   assert.match(styles, /--type-lead: 18px/);
   assert.match(styles, /text-shadow: 0 3px 18px rgba\(0, 0, 0, 0\.33\)/);
-  assert.match(styles, /0 1px 4px rgba\(0, 0, 0, 0\.55\)/);
-  assert.match(styles, /0 3px 16px rgba\(0, 0, 0, 0\.45\)/);
+  assert.match(styles, /color: rgba\(245, 235, 231, 0\.88\)/);
+  assert.match(styles, /0 2px 6px rgba\(0, 0, 0, 0\.6\)/);
+  assert.match(styles, /0 4px 18px rgba\(0, 0, 0, 0\.6\)/);
   assert.ok(
     styles.indexOf(':root[data-typography="updated"]') >
       styles.indexOf("@media (prefers-reduced-motion: reduce)"),

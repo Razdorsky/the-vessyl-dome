@@ -1635,7 +1635,7 @@ main,
   --type-h2: clamp(48px, 5.47vw, 103px);
   --type-h2-experience: clamp(47px, 4.96vw, 91px);
   --type-h2-book: clamp(55px, 6.16vw, 116px);
-  --type-lead: 18px;
+  --type-lead: 20px;
   --type-cta: 12px;
   --type-micro: 10px;
   --type-body-small: 12px;
@@ -1708,9 +1708,10 @@ main,
 :root[data-typography="updated"] .journey-heading > p:last-child,
   :root[data-typography="updated"] .book-copy > p:not(.section-index) {
   font-size: var(--type-lead);
+  color: rgba(245, 235, 231, 0.88);
   text-shadow:
-    0 1px 4px rgba(0, 0, 0, 0.55),
-    0 3px 16px rgba(0, 0, 0, 0.45);
+    0 2px 6px rgba(0, 0, 0, 0.6),
+    0 4px 18px rgba(0, 0, 0, 0.6);
 }
 
 :root[data-typography="updated"] .button,
@@ -1765,7 +1766,7 @@ main,
     --type-h2: clamp(44px, 11.12vw, 75px);
     --type-h2-experience: var(--type-h2);
     --type-h2-book: clamp(48px, 12.4vw, 82px);
-    --type-lead: 16px;
+    --type-lead: 18px;
   }
 }
 
