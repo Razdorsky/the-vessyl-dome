@@ -131,7 +131,7 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   );
   assert.match(
     styles,
-    /\.photo-portal img \{[\s\S]*transform: scale\(1\.2\);[\s\S]*transform 4s/,
+    /\.photo-portal img \{[\s\S]*transform: scale\(1\.25\);[\s\S]*transform 5s/,
   );
   assert.match(
     styles,
