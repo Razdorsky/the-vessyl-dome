@@ -106,6 +106,22 @@ test("updated typography keeps a one-switch legacy rollback", async () => {
   assert.match(styles, /color: rgba\(245, 235, 231, 0\.88\)/);
   assert.match(styles, /0 2px 6px rgba\(0, 0, 0, 0\.6\)/);
   assert.match(styles, /0 4px 18px rgba\(0, 0, 0, 0\.6\)/);
+  assert.match(
+    styles,
+    /\.portal-stay figcaption \{\s*top: 1\.45rem;\s*bottom: auto;/,
+  );
+  assert.match(
+    styles,
+    /\.portal-stay::before \{[\s\S]*linear-gradient\(180deg, rgba\(7, 9, 8, 0\.74\), transparent 52%/,
+  );
+  assert.match(
+    styles,
+    /\.photo-portal img \{[\s\S]*transform: scale\(1\.16\);[\s\S]*transform 2\.6s/,
+  );
+  assert.match(
+    styles,
+    /\.is-visible \.photo-portal img \{\s*transform: scale\(1\);/,
+  );
   assert.ok(
     styles.indexOf(':root[data-typography="updated"]') >
       styles.indexOf("@media (prefers-reduced-motion: reduce)"),

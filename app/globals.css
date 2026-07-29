@@ -1068,6 +1068,12 @@ main,
   pointer-events: none;
 }
 
+.portal-stay::before {
+  background:
+    linear-gradient(180deg, rgba(7, 9, 8, 0.74), transparent 52%, rgba(7, 9, 8, 0.08)),
+    linear-gradient(90deg, rgba(7, 9, 8, 0.18), transparent 45%);
+}
+
 .photo-portal::after {
   content: "";
   position: absolute;
@@ -1083,9 +1089,9 @@ main,
   height: 100%;
   object-fit: cover;
   filter: saturate(0.84) contrast(1.04) brightness(0.8);
-  transform: scale(1.03);
+  transform: scale(1.16);
   transition:
-    transform 1.8s cubic-bezier(0.18, 0.7, 0.18, 1),
+    transform 2.6s cubic-bezier(0.18, 0.7, 0.18, 1),
     filter 0.8s ease;
 }
 
@@ -1112,6 +1118,11 @@ main,
   font-weight: 650;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.portal-stay figcaption {
+  top: 1.45rem;
+  bottom: auto;
 }
 
 .chapter-stay::before {
@@ -1518,6 +1529,11 @@ main,
     bottom: 1rem;
     flex-direction: column;
     gap: 0.35rem;
+  }
+
+  .portal-stay figcaption {
+    top: 1rem;
+    bottom: auto;
   }
 
   .chapter-book {
