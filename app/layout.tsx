@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Prata } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -17,8 +18,9 @@ const prata = Prata({
 
 const TYPOGRAPHY_PROFILE: "legacy" | "updated" = "updated";
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://thevessyl.com"),
+const FALLBACK_METADATA_BASE = new URL("https://thevessyl.com");
+
+const siteMetadata: Metadata = {
   title: {
     default: "The Vessyl — Arenal, Costa Rica",
     template: "%s | The Vessyl",
@@ -62,6 +64,36 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    .trim();
+  const host = forwardedHost || requestHeaders.get("host");
+  const forwardedProtocol = requestHeaders
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    .trim();
+  const isLocalHost =
+    host?.startsWith("localhost") || host?.startsWith("127.0.0.1");
+  const protocol = forwardedProtocol || (isLocalHost ? "http" : "https");
+
+  let metadataBase = FALLBACK_METADATA_BASE;
+  if (host) {
+    try {
+      metadataBase = new URL(`${protocol}://${host}`);
+    } catch {
+      metadataBase = FALLBACK_METADATA_BASE;
+    }
+  }
+
+  return {
+    ...siteMetadata,
+    metadataBase,
+  };
+}
 
 export default function RootLayout({
   children,
