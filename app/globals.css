@@ -44,7 +44,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  overflow-x: hidden;
+  overflow-x: clip;
   background:
     radial-gradient(circle at 72% 8%, rgba(213, 126, 61, 0.06), transparent 32rem),
     var(--ink);
@@ -53,6 +53,10 @@ body {
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+body.mobile-scroll-locked {
+  overflow: hidden;
 }
 
 body,
@@ -1254,6 +1258,10 @@ main,
 }
 
 @media (max-width: 820px) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .site-header {
     grid-template-columns: 1fr auto;
     padding: 1.15rem 1.2rem;
@@ -1539,6 +1547,12 @@ main,
     grid-column: 1 / -1;
     justify-self: start;
     text-align: left;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html {
+    scroll-behavior: auto;
   }
 }
 

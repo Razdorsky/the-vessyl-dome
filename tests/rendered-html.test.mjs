@@ -151,6 +151,22 @@ test("volcano environment is rendered by the Three.js world", async () => {
   assert.match(scene, /sceneRings = isVisible \? "animating" : "paused"/);
   assert.match(scene, /sceneState = "idle"/);
   assert.match(experience, /src="\/footer-mark\.svg"/);
+  assert.match(experience, /const MOBILE_SCROLL_LOCK_CLASS/);
+  assert.match(experience, /event\.preventDefault\(\)/);
+  assert.match(
+    experience,
+    /document\.body\.classList\.remove\(MOBILE_SCROLL_LOCK_CLASS\)/,
+  );
+  assert.match(
+    experience,
+    /target\.scrollIntoView\(\{ behavior, block: "start" \}\)/,
+  );
+  assert.doesNotMatch(experience, /document\.body\.style\.overflow/);
+  assert.match(styles, /body \{[\s\S]*overflow-x: clip/);
+  assert.match(
+    styles,
+    /@media \(max-width: 820px\) \{[\s\S]*html \{[\s\S]*scroll-behavior: auto/,
+  );
   assert.match(
     styles,
     /\.site-footer > img \{[\s\S]*width: 74px;[\s\S]*height: 74px;/,

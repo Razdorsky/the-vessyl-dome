@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 
@@ -11,6 +11,7 @@ const DomeScene = dynamic(
 
 const BOOKING_URL =
   "https://be.synxis.com/?adult=1&chain=27398&child=0&currency=CRC&hotel=99564&level=hotel&locale=en-US&productcurrency=CRC&rooms=1";
+const MOBILE_SCROLL_LOCK_CLASS = "mobile-scroll-locked";
 
 const chapters = [
   { id: "top", label: "Arrival" },
@@ -134,23 +135,62 @@ export function VessylExperience() {
   }, []);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    const releaseScrollLock = () => {
+      document.body.classList.remove(MOBILE_SCROLL_LOCK_CLASS);
+    };
 
-    const previousOverflow = document.body.style.overflow;
+    if (!menuOpen) {
+      releaseScrollLock();
+      return;
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMenuOpen(false);
     };
 
-    document.body.style.overflow = "hidden";
+    document.body.classList.add(MOBILE_SCROLL_LOCK_CLASS);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [menuOpen]);
 
   const closeMenu = () => setMenuOpen(false);
+  const navigateToChapter = (
+    event: MouseEvent<HTMLAnchorElement>,
+    chapterId: string,
+  ) => {
+    event.preventDefault();
+    event.currentTarget.blur();
+
+    document.body.classList.remove(MOBILE_SCROLL_LOCK_CLASS);
+    setMenuOpen(false);
+
+    const target = document.getElementById(chapterId);
+    if (!target) return;
+
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const mobileViewport = window.matchMedia("(max-width: 820px)").matches;
+    const coarsePointer = window.matchMedia(
+      "(hover: none) and (pointer: coarse)",
+    ).matches;
+    const behavior =
+      reducedMotion || mobileViewport || coarsePointer ? "auto" : "smooth";
+    const hash = `#${chapterId}`;
+
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior, block: "start" });
+      if (window.location.hash === hash) {
+        window.history.replaceState(null, "", hash);
+      } else {
+        window.history.pushState(null, "", hash);
+      }
+    });
+  };
 
   return (
     <div className="experience">
@@ -163,7 +203,12 @@ export function VessylExperience() {
       <div className="ambient-field" aria-hidden="true" />
 
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="The Vessyl home">
+        <a
+          className="brand"
+          href="#top"
+          aria-label="The Vessyl home"
+          onClick={(event) => navigateToChapter(event, "top")}
+        >
           <Image
             src="/vessyl-logo.svg"
             alt="The Vessyl"
@@ -176,7 +221,11 @@ export function VessylExperience() {
 
         <nav className="desktop-nav" aria-label="Primary navigation">
           {chapters.slice(1, 5).map((chapter) => (
-            <a key={chapter.id} href={`#${chapter.id}`}>
+            <a
+              key={chapter.id}
+              href={`#${chapter.id}`}
+              onClick={(event) => navigateToChapter(event, chapter.id)}
+            >
               {chapter.label}
             </a>
           ))}
@@ -215,7 +264,7 @@ export function VessylExperience() {
             <a
               key={chapter.id}
               href={`#${chapter.id}`}
-              onClick={closeMenu}
+              onClick={(event) => navigateToChapter(event, chapter.id)}
             >
               <span>{String(index + 1).padStart(2, "0")}</span>
               {chapter.label}
@@ -242,6 +291,7 @@ export function VessylExperience() {
             href={`#${chapter.id}`}
             className={activeChapter === index ? "is-active" : ""}
             aria-label={`Go to ${chapter.label}`}
+            onClick={(event) => navigateToChapter(event, chapter.id)}
           >
             <span>{String(index).padStart(2, "0")}</span>
             <i />
@@ -267,7 +317,11 @@ export function VessylExperience() {
                 expanded awareness.
               </p>
               <div className="hero-actions">
-                <a className="button button-primary" href="#dome">
+                <a
+                  className="button button-primary"
+                  href="#dome"
+                  onClick={(event) => navigateToChapter(event, "dome")}
+                >
                   Enter The Dome
                   <span aria-hidden="true">↓</span>
                 </a>
@@ -294,7 +348,11 @@ export function VessylExperience() {
               </p>
             </div>
 
-            <a className="scroll-cue" href="#dome">
+            <a
+              className="scroll-cue"
+              href="#dome"
+              onClick={(event) => navigateToChapter(event, "dome")}
+            >
               <span>Scroll to enter</span>
               <i aria-hidden="true" />
             </a>
