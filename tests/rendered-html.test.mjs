@@ -219,11 +219,21 @@ test("volcano environment is rendered by the Three.js world", async () => {
     experience,
     /target\.scrollIntoView\(\{ behavior, block: "start" \}\)/,
   );
+  assert.match(
+    experience,
+    /const behavior = reducedMotion \? "auto" : "smooth"/,
+  );
+  assert.doesNotMatch(experience, /mobileViewport|coarsePointer/);
   assert.doesNotMatch(experience, /document\.body\.style\.overflow/);
   assert.match(styles, /body \{[\s\S]*overflow-x: clip/);
+  assert.doesNotMatch(
+    styles,
+    /@media \(max-width: 820px\) \{\s*html \{\s*scroll-behavior: auto/,
+  );
+  assert.doesNotMatch(styles, /@media \(hover: none\) and \(pointer: coarse\)/);
   assert.match(
     styles,
-    /@media \(max-width: 820px\) \{[\s\S]*html \{[\s\S]*scroll-behavior: auto/,
+    /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*scroll-behavior: auto/,
   );
   assert.match(
     styles,

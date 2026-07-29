@@ -182,12 +182,7 @@ export function VessylExperience() {
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    const mobileViewport = window.matchMedia("(max-width: 820px)").matches;
-    const coarsePointer = window.matchMedia(
-      "(hover: none) and (pointer: coarse)",
-    ).matches;
-    const behavior =
-      reducedMotion || mobileViewport || coarsePointer ? "auto" : "smooth";
+    const behavior = reducedMotion ? "auto" : "smooth";
     const hash = `#${chapterId}`;
 
     window.requestAnimationFrame(() => {
